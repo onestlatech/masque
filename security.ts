@@ -11,7 +11,7 @@ const directives = {
   'form-action': ["'none'"],
   'frame-ancestors': ["'none'"],
   'require-trusted-types-for': ["'script'"],
-  'trusted-types': ['svelte-trusted-html'],
+  'trusted-types': ['svelte-trusted-html', 'default'],
 }
 
 const serialize = (d: Record<string, string[]>) =>

@@ -2,7 +2,7 @@
 
 Hide faces in photos and videos of public demonstrations. Masque runs entirely in your browser: files are never uploaded, and the app works offline once loaded.
 
-Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) model, as in [deface](https://github.com/ORB-HD/deface).
+Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) model (MIT), as in [deface](https://github.com/ORB-HD/deface). `public/models/centerface.onnx` is deface's model with dynamic input sizes, produced by `uv run scripts/prepare-model.py`.
 
 ## Privacy
 
