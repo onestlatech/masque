@@ -1,0 +1,32 @@
+{
+  "name": "masque",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Anonymize faces in photos and videos, entirely in your browser",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "mediabunny": "1.61.1",
+    "onnxruntime-web": "1.30.0",
+    "svelte": "5.57.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "@sveltejs/vite-plugin-svelte": "7.3.1",
+    "@tsconfig/svelte": "5.0.8",
+    "@types/node": "26.6.4",
+    "svelte-check": "4.7.6",
+    "typescript": "6.0.3",
+    "vite": "8.3.2",
+    "vitest": "5.0.3"
+  }
+}
