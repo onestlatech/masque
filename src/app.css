@@ -22,3 +22,43 @@ body {
   margin: 0;
   background: var(--bg);
 }
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 20rem;
+  gap: 1rem;
+}
+
+@media (max-width: 48rem) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+aside {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--muted);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: bold;
+}

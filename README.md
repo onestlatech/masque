@@ -2,12 +2,14 @@
 
 Hide faces in photos and videos of public demonstrations. Masque runs entirely in your browser: files are never uploaded, and the app works offline once loaded.
 
+In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export.
+
 Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) model (MIT), as in [deface](https://github.com/ORB-HD/deface). `public/models/centerface.onnx` is deface's model with dynamic input sizes, produced by `uv run scripts/prepare-model.py`.
 
 ## Privacy
 
 - No backend, no analytics, no third-party requests. A strict Content Security Policy (`connect-src 'self'`) blocks the page from sending data anywhere else.
-- Output files carry no metadata (EXIF, GPS, device identifiers).
+- Output files carry no metadata: no EXIF, GPS, or device identifiers in photos; no tags or creation dates in videos.
 - Hiding faces does not hide everything: clothing, tattoos, banners, gait, and landmarks can still identify people. Your phone may also have uploaded the originals to a cloud backup.
 
 ## Development

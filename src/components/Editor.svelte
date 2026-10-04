@@ -1,35 +1,44 @@
 <script lang="ts">
-  import { applyMasks, type MaskOptions } from '../lib/anonymize/render.ts'
-  import { manualFace, visible, type Face } from '../lib/faces.ts'
+  import { applyMasks, type Box, type MaskOptions } from '../lib/anonymize/render.ts'
+  import type { Face } from '../lib/faces.ts'
 
   let {
     bitmap,
-    faces = $bindable(),
-    threshold,
+    faces,
     options,
-  }: { bitmap: ImageBitmap; faces: Face[]; threshold: number; options: MaskOptions } = $props()
+    selected = $bindable(),
+    onadd,
+    onchange,
+    onremove,
+  }: {
+    bitmap: ImageBitmap
+    faces: Face[]
+    options: MaskOptions
+    selected?: number
+    /** Returns the new mask's id. */
+    onadd: (box: Box) => number
+    onchange: (id: number, box: Box) => void
+    onremove: (id: number) => void
+  } = $props()
 
   const HANDLE = 12 // CSS pixels
 
   let canvas: HTMLCanvasElement
-  let selected = $state<number>()
   let drag:
     | { kind: 'new'; x: number; y: number; id?: number }
-    | { kind: 'move' | 'resize'; x: number; y: number; face: Face; orig: Face }
+    | { kind: 'move' | 'resize'; x: number; y: number; id: number; orig: Box }
     | undefined
-
-  const shown = $derived(visible(faces, threshold))
 
   $effect(() => {
     canvas.width = bitmap.width
     canvas.height = bitmap.height
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(bitmap, 0, 0)
-    applyMasks(ctx, shown, options)
+    applyMasks(ctx, faces, options)
 
     const px = pixelRatio()
     ctx.lineWidth = 2 * px
-    for (const f of shown) {
+    for (const f of faces) {
       ctx.strokeStyle = f.id === selected ? '#facc15' : f.manual ? '#60a5fa' : '#f87171'
       ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1)
       if (f.id === selected) {
@@ -49,8 +58,8 @@
 
   function hit(x: number, y: number) {
     // Topmost first: the last drawn box wins.
-    for (let i = shown.length - 1; i >= 0; i--) {
-      const f = shown[i]
+    for (let i = faces.length - 1; i >= 0; i--) {
+      const f = faces[i]
       if (x >= f.x1 && x <= f.x2 && y >= f.y1 && y <= f.y2) return f
     }
   }
@@ -67,7 +76,7 @@
     selected = face.id
     const h = HANDLE * pixelRatio()
     const kind = x >= face.x2 - h && y >= face.y2 - h ? 'resize' : 'move'
-    drag = { kind, x, y, face, orig: { ...face } }
+    drag = { kind, x, y, id: face.id, orig: { x1: face.x1, y1: face.y1, x2: face.x2, y2: face.y2 } }
   }
 
   function pointermove(e: PointerEvent) {
@@ -76,27 +85,24 @@
     const { x, y } = point(e)
     if (d.kind === 'new') {
       const box = { x1: Math.min(d.x, x), y1: Math.min(d.y, y), x2: Math.max(d.x, x), y2: Math.max(d.y, y) }
-      const existing = faces.find((f) => f.id === d.id)
-      if (existing) Object.assign(existing, box)
-      else if (box.x2 - box.x1 > 4 && box.y2 - box.y1 > 4) {
-        const face = manualFace(box)
-        d.id = selected = face.id
-        faces.push(face)
-      }
+      if (d.id !== undefined) onchange(d.id, box)
+      else if (box.x2 - box.x1 > 4 && box.y2 - box.y1 > 4) d.id = selected = onadd(box)
       return
     }
     const dx = x - d.x
     const dy = y - d.y
     const { orig } = d
-    const face = faces.find((f) => f.id === d.face.id)!
-    face.manual = true
-    if (d.kind === 'move') Object.assign(face, { x1: orig.x1 + dx, y1: orig.y1 + dy, x2: orig.x2 + dx, y2: orig.y2 + dy })
-    else Object.assign(face, { x2: Math.max(orig.x1 + 4, orig.x2 + dx), y2: Math.max(orig.y1 + 4, orig.y2 + dy) })
+    onchange(
+      d.id,
+      d.kind === 'move'
+        ? { x1: orig.x1 + dx, y1: orig.y1 + dy, x2: orig.x2 + dx, y2: orig.y2 + dy }
+        : { ...orig, x2: Math.max(orig.x1 + 4, orig.x2 + dx), y2: Math.max(orig.y1 + 4, orig.y2 + dy) },
+    )
   }
 
   function remove(id: number) {
-    faces = faces.filter((f) => f.id !== id)
     if (selected === id) selected = undefined
+    onremove(id)
   }
 
   function keydown(e: KeyboardEvent) {
@@ -111,7 +117,7 @@
 <canvas
   bind:this={canvas}
   tabindex="0"
-  aria-label="Photo with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it."
+  aria-label="Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it."
   onpointerdown={pointerdown}
   onpointermove={pointermove}
   onpointerup={() => (drag = undefined)}
@@ -119,9 +125,9 @@
 ></canvas>
 
 <details>
-  <summary>{shown.length} {shown.length === 1 ? 'mask' : 'masks'}</summary>
+  <summary>{faces.length} {faces.length === 1 ? 'mask' : 'masks'}</summary>
   <ul>
-    {#each shown as f, i (f.id)}
+    {#each faces as f, i (f.id)}
       <li data-box={[f.x1, f.y1, f.x2, f.y2, f.score].map((v) => v.toFixed(3)).join(',')} class:selected={f.id === selected}>
         <button type="button" class="link" onclick={() => (selected = f.id)}>
           {f.manual ? 'Manual mask' : `Face ${i + 1}`}{f.manual ? '' : ` (${Math.round(f.score * 100)}%)`}
