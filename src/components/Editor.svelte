@@ -185,7 +185,7 @@
     padding: 0;
     border: 2px solid #fff;
     border-radius: 50%;
-    background: var(--accent);
+    background: var(--danger);
     color: #fff;
     font-size: 1.25rem;
     font-weight: bold;

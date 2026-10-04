@@ -56,6 +56,20 @@ const en = {
   'error.noVideo': 'This file has no video.',
   'error.cannotDecode': 'Your browser cannot decode this video format.',
   'error.cannotEncode': 'Your browser cannot encode this video.',
+  about: 'About',
+  aboutText:
+    'Masque hides the faces of people in photos and videos of demonstrations, so you can share them without exposing protesters. It runs entirely in your browser: your files never leave your device. Masque is free software, under the AGPL license.',
+  createdBy: 'Created by',
+  onestlaDescription: 'A collective of tech workers engaged in social struggles.',
+  offensiveDescription: 'A libertarian municipalist organization in Lille: social ecology, feminism, antifascism, and direct democracy.',
+  credits: 'Credits',
+  creditCenterface: 'face detection model',
+  creditDeface: 'the command-line tool Masque builds on',
+  creditOnnx: 'runs the model in your browser',
+  creditMediabunny: 'video decoding and encoding',
+  creditSvelte: 'user interface',
+  creditFflate: 'ZIP archives',
+  creditPlex: 'typeface',
 }
 
 const fr: typeof en = {
@@ -114,6 +128,20 @@ const fr: typeof en = {
   'error.noVideo': 'Ce fichier ne contient pas de vidéo.',
   'error.cannotDecode': 'Votre navigateur ne sait pas décoder ce format vidéo.',
   'error.cannotEncode': 'Votre navigateur ne sait pas encoder cette vidéo.',
+  about: 'À propos',
+  aboutText:
+    'Masque cache les visages des personnes sur les photos et vidéos de manifestations, pour les partager sans exposer les manifestant·es. Tout se passe dans votre navigateur : vos fichiers ne quittent jamais votre appareil. Masque est un logiciel libre, sous licence AGPL.',
+  createdBy: 'Une création de',
+  onestlaDescription: 'Collectif de travailleuses et travailleurs du numérique engagé·es dans les luttes sociales.',
+  offensiveDescription: 'Organisation municipaliste libertaire à Lille : écologie sociale, féminisme, antifascisme et démocratie directe.',
+  credits: 'Crédits',
+  creditCenterface: 'modèle de détection des visages',
+  creditDeface: 'l’outil en ligne de commande dont Masque s’inspire',
+  creditOnnx: 'exécute le modèle dans votre navigateur',
+  creditMediabunny: 'décodage et encodage vidéo',
+  creditSvelte: 'interface',
+  creditFflate: 'archives ZIP',
+  creditPlex: 'police de caractères',
 }
 
 const messages = { en, fr }

@@ -42,15 +42,15 @@
     align-items: center;
     gap: 0.25rem;
     padding: 3rem 1rem;
-    border: 2px dashed var(--muted);
-    border-radius: 0.75rem;
+    border: 3px dashed var(--accent);
     cursor: pointer;
     text-align: center;
   }
 
   .zone.over,
   .zone:focus-within {
-    border-color: var(--accent);
+    border-style: solid;
+    background: var(--tint);
   }
 
   input {

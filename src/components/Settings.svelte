@@ -44,16 +44,33 @@
   fieldset {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
-    border: 1px solid var(--muted);
-    border-radius: 0.5rem;
+    gap: 0.75rem;
+    /* Fieldsets refuse to shrink below their content by default. */
+    min-width: 0;
+    border: 2px solid var(--fg);
   }
 
+  /* Label text on its own row, control and value below: fits narrow sidebars and long translations. */
   label {
     display: grid;
-    grid-template-columns: 9rem 1fr 3rem;
+    grid-template-columns: 1fr auto;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.25rem 0.5rem;
+  }
+
+  label > :is(select, input) {
+    grid-row: 2;
+    grid-column: 1;
+    min-width: 0;
+  }
+
+  label > select {
+    grid-column: 1 / -1;
+  }
+
+  label > output {
+    grid-row: 2;
+    grid-column: 2;
   }
 
   label.inline {
@@ -62,7 +79,7 @@
 
   .warning {
     margin: 0;
-    color: var(--accent);
+    color: var(--accent-strong);
   }
 
   .help {
