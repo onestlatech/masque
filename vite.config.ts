@@ -1,6 +1,8 @@
 /// <reference types="vitest/config" />
-import { readFileSync } from 'node:fs'
-import { defaultClientConditions, defineConfig, type Plugin } from 'vite'
+import { createHash } from 'node:crypto'
+import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { join, relative } from 'node:path'
+import { defaultClientConditions, defineConfig, transformWithOxc, type Plugin, type ResolvedConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
 
@@ -23,10 +25,40 @@ function security(): Plugin {
   }
 }
 
+// Compiles src/sw.ts to a classic script (module service workers are not universal) listing every built file.
+function serviceWorker(): Plugin {
+  let config: ResolvedConfig
+  return {
+    name: 'masque:service-worker',
+    apply: 'build',
+    configResolved(c) {
+      config = c
+    },
+    async closeBundle() {
+      const outDir = config.build.outDir
+      const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
+        .filter((f) => f.isFile())
+        .map((f) => relative(outDir, join(f.parentPath, f.name)).split('\\').join('/'))
+        .filter((f) => f !== '_headers' && f !== 'sw.js')
+        .sort()
+      const precache = files.map((f) => (f === 'index.html' ? config.base : config.base + f))
+      const hash = createHash('sha256')
+      for (const f of files) hash.update(f).update(readFileSync(join(outDir, f)))
+      const { code } = await transformWithOxc(readFileSync('src/sw.ts', 'utf8'), 'sw.ts')
+      writeFileSync(
+        join(outDir, 'sw.js'),
+        code
+          .replace('__PRECACHE__', JSON.stringify(precache))
+          .replace('__VERSION__', JSON.stringify(hash.digest('hex').slice(0, 16))),
+      )
+    },
+  }
+}
+
 const modelSha256 = readFileSync('public/models/SHA256SUMS', 'utf8').split(' ')[0]
 
 export default defineConfig({
-  plugins: [svelte(), security()],
+  plugins: [svelte(), security(), serviceWorker()],
   define: {
     __MODEL_INTEGRITY__: JSON.stringify(`sha256-${Buffer.from(modelSha256, 'hex').toString('base64')}`),
   },

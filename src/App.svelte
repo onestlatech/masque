@@ -13,11 +13,21 @@
   let options = $state<MaskOptions>({ ...defaultMaskOptions })
   let threshold = $state(0.2)
   let file = $state.raw<File>()
+  let offline = $state(false)
 
-  worker.call('init', {}).then(
-    (b) => (backend = b),
-    (e: Error) => (error = `The face detector could not start: ${e.message}`),
-  )
+  navigator.serviceWorker?.ready.then(() => (offline = true))
+
+  worker
+    .call('init', {})
+    .then(
+      (b) => (backend = b),
+      (e: Error) => (error = `The face detector could not start: ${e.message}`),
+    )
+    // Precaching the model while the detector downloads it makes Chromium's HTTP cache fail one of the two.
+    .finally(() => {
+      if (import.meta.env.PROD && 'serviceWorker' in navigator)
+        navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
+    })
 
   function open([f]: File[]) {
     error = undefined
@@ -55,6 +65,9 @@
       Check everything before sharing: automatic detection can miss faces. Clothing, tattoos, banners, and places can
       still identify people, and your phone may have backed up the original to the cloud.
     </p>
+    {#if offline}
+      <p>Saved on this device: Masque now works without an internet connection.</p>
+    {/if}
     {#if backend}
       <p class="backend">Detection runs on your {backend === 'webgpu' ? 'GPU (WebGPU)' : 'CPU (WebAssembly)'}.</p>
     {/if}

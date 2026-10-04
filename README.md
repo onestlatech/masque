@@ -1,6 +1,6 @@
 # Masque
 
-Hide faces in photos and videos of public demonstrations. Masque runs entirely in your browser: files are never uploaded, and the app works offline once loaded.
+Hide faces in photos and videos of public demonstrations. Masque runs entirely in your browser: files are never uploaded, and once loaded the app keeps working offline and can be installed on a phone's home screen.
 
 In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export.
 
