@@ -1,4 +1,6 @@
-import type * as Ort from 'onnxruntime-web'
+import * as ort from 'onnxruntime-web'
+import wasmGlue from 'onnxruntime-web/ort-wasm-simd-threaded.jsep.mjs?url'
+import wasmBinary from 'onnxruntime-web/ort-wasm-simd-threaded.jsep.wasm?url'
 import { decode, nms, NMS_THRESHOLD, toTensor, type Detection } from './centerface.ts'
 import { defaultTiling, planPasses, type TilingOptions } from './tiling.ts'
 
@@ -10,14 +12,12 @@ export class Detector {
   private canvases = new Map<string, OffscreenCanvasRenderingContext2D>()
 
   private constructor(
-    private ort: typeof Ort,
-    private session: Ort.InferenceSession,
+    private session: ort.InferenceSession,
     readonly backend: Backend,
   ) {}
 
   static async create(): Promise<Detector> {
-    // Separate chunk: ONNX Runtime spawns its thread workers from its own module URL.
-    const ort = await import('onnxruntime-web')
+    ort.env.wasm.wasmPaths = { mjs: new URL(wasmGlue, location.href), wasm: new URL(wasmBinary, location.href) }
     const response = await fetch(MODEL_URL, { integrity: __MODEL_INTEGRITY__ })
     const model = new Uint8Array(await response.arrayBuffer())
 
@@ -27,7 +27,7 @@ export class Detector {
           executionProviders: [backend],
           graphOptimizationLevel: 'all',
         })
-        return new Detector(ort, session, backend)
+        return new Detector(session, backend)
       } catch (e) {
         if (backend === 'wasm') throw e
       }
@@ -47,7 +47,7 @@ export class Detector {
       const ctx = this.context(inputWidth, inputHeight)
       ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, 0, inputWidth, inputHeight)
       const { data } = ctx.getImageData(0, 0, inputWidth, inputHeight)
-      const input = new this.ort.Tensor('float32', toTensor(data, inputWidth, inputHeight), [1, 3, inputHeight, inputWidth])
+      const input = new ort.Tensor('float32', toTensor(data, inputWidth, inputHeight), [1, 3, inputHeight, inputWidth])
       const out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
       const h = inputHeight / 4
       const w = inputWidth / 4

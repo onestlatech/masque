@@ -1,6 +1,6 @@
 /// <reference types="vitest/config" />
 import { readFileSync } from 'node:fs'
-import { defineConfig, type Plugin } from 'vite'
+import { defaultClientConditions, defineConfig, type Plugin } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
 
@@ -30,8 +30,9 @@ export default defineConfig({
   define: {
     __MODEL_INTEGRITY__: JSON.stringify(`sha256-${Buffer.from(modelSha256, 'hex').toString('base64')}`),
   },
+  // ONNX Runtime threads start from its standalone glue file: from a bundled chunk they would re-run our worker code.
+  resolve: { conditions: ['onnxruntime-web-use-extern-wasm', ...defaultClientConditions] },
   worker: { format: 'es' },
-  // Pre-bundling breaks ONNX Runtime's import.meta.url-relative WebAssembly loading.
   optimizeDeps: { exclude: ['onnxruntime-web'] },
   server: { headers: isolationHeaders },
   preview: { headers: securityHeaders },
