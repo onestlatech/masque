@@ -19,7 +19,7 @@ export async function exportImage(bitmap: ImageBitmap, boxes: Box[], options: Ma
 /** PNG keeps transparency; everything else becomes JPEG. */
 export const outputType = (input: string) => (input === 'image/png' ? 'image/png' : 'image/jpeg')
 
-const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'video/mp4': 'mp4', 'video/webm': 'webm' }
+const EXTENSIONS: Record<string, string> = { 'image/png': 'png', 'image/jpeg': 'jpg', 'video/mp4': 'mp4', 'video/webm': 'webm', 'application/zip': 'zip' }
 
 /** Random name: the original may contain a date, place, or the photographer's name. */
 export const outputName = (type: string) => `masque-${crypto.randomUUID().slice(0, 8)}.${EXTENSIONS[type]}`

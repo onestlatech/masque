@@ -30,8 +30,8 @@
       input.value = ''
     }}
   />
-  <strong>Choose a photo or video</strong>
-  <span>or drop it here</span>
+  <strong>Choose photos or a video</strong>
+  <span>or drop them here</span>
 </label>
 
 <style>

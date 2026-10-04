@@ -18,3 +18,8 @@ export const fromDetection = (d: Detection): Face => ({ ...d, id: nextId++, manu
 export const manualFace = (b: Box): Face => ({ ...b, id: nextId++, score: 1, manual: true })
 
 export const visible = (faces: Face[], threshold: number) => faces.filter((f) => f.manual || f.score >= threshold)
+
+/** A detection the user moved or resized becomes theirs: it stays masked whatever the threshold. */
+export function editFace(faces: Face[], id: number, box: Box) {
+  Object.assign(faces.find((f) => f.id === id)!, box, { manual: true })
+}

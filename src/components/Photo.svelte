@@ -3,7 +3,7 @@
   import Settings from './Settings.svelte'
   import type { MaskOptions } from '../lib/anonymize/render.ts'
   import type { Engine } from '../lib/detect/client.ts'
-  import { fromDetection, manualFace, MIN_THRESHOLD, visible, type Face } from '../lib/faces.ts'
+  import { editFace, fromDetection, manualFace, MIN_THRESHOLD, visible, type Face } from '../lib/faces.ts'
   import { download, exportImage, loadImage, outputName, outputType } from '../lib/media/image.ts'
 
   let {
@@ -50,11 +50,6 @@
     return () => b?.close()
   })
 
-  function change(id: number, box: object) {
-    const face = faces.find((f) => f.id === id)!
-    Object.assign(face, box, { manual: true })
-  }
-
   async function save() {
     const type = outputType(file.type)
     const blob = await exportImage(bitmap!, $state.snapshot(shown), $state.snapshot(options), type)
@@ -77,7 +72,7 @@
           faces.push(face)
           return face.id
         }}
-        onchange={change}
+        onchange={(id, box) => editFace(faces, id, box)}
         onremove={(id) => (faces = faces.filter((f) => f.id !== id))}
       />
     {/if}

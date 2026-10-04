@@ -1,4 +1,5 @@
 <script lang="ts">
+  import Batch from './components/Batch.svelte'
   import DropZone from './components/DropZone.svelte'
   import Photo from './components/Photo.svelte'
   import Video from './components/Video.svelte'
@@ -12,7 +13,7 @@
   let error = $state<string>()
   let options = $state<MaskOptions>({ ...defaultMaskOptions })
   let threshold = $state(0.2)
-  let file = $state.raw<File>()
+  let files = $state.raw<File[]>([])
   let offline = $state(false)
 
   navigator.serviceWorker?.ready.then(() => (offline = true))
@@ -29,13 +30,17 @@
         navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
     })
 
-  function open([f]: File[]) {
+  function open(selected: File[]) {
     error = undefined
-    file = f
+    if (selected.length > 1 && selected.some((f) => f.type.startsWith('video/'))) {
+      error = 'Open videos one at a time: each needs its own review.'
+      return
+    }
+    files = selected
   }
 
   const onerror = (message: string) => (error = message)
-  const onclose = () => (file = undefined)
+  const onclose = () => (files = [])
 </script>
 
 <main>
@@ -48,12 +53,14 @@
     <p class="error" role="alert">{error}</p>
   {/if}
 
-  {#if file}
-    {#key file}
-      {#if file.type.startsWith('video/')}
-        <Video {file} {worker} bind:options bind:threshold {onerror} {onclose} />
+  {#if files.length}
+    {#key files}
+      {#if files.length > 1}
+        <Batch {files} {worker} bind:options bind:threshold {onclose} />
+      {:else if files[0].type.startsWith('video/')}
+        <Video file={files[0]} {worker} bind:options bind:threshold {onerror} {onclose} />
       {:else}
-        <Photo {file} {worker} bind:options bind:threshold {onerror} {onclose} />
+        <Photo file={files[0]} {worker} bind:options bind:threshold {onerror} {onclose} />
       {/if}
     {/key}
   {:else}
