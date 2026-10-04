@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { i18n, setLocale, t, type Locale } from './lib/i18n.svelte.ts'
   import Batch from './components/Batch.svelte'
   import DropZone from './components/DropZone.svelte'
   import Photo from './components/Photo.svelte'
@@ -22,7 +23,7 @@
     .call('init', {})
     .then(
       (b) => (backend = b),
-      (e: Error) => (error = `The face detector could not start: ${e.message}`),
+      (e: Error) => (error = t('detectorFailed', e.message)),
     )
     // Precaching the model while the detector downloads it makes Chromium's HTTP cache fail one of the two.
     .finally(() => {
@@ -33,7 +34,7 @@
   function open(selected: File[]) {
     error = undefined
     if (selected.length > 1 && selected.some((f) => f.type.startsWith('video/'))) {
-      error = 'Open videos one at a time: each needs its own review.'
+      error = t('oneVideo')
       return
     }
     files = selected
@@ -46,7 +47,7 @@
 <main>
   <header>
     <h1>Masque</h1>
-    <p>Hide faces in photos and videos. Everything runs on your device: your files are never uploaded.</p>
+    <p>{t('tagline')}</p>
   </header>
 
   {#if error}
@@ -68,16 +69,20 @@
   {/if}
 
   <footer>
-    <p>
-      Check everything before sharing: automatic detection can miss faces. Clothing, tattoos, banners, and places can
-      still identify people, and your phone may have backed up the original to the cloud.
-    </p>
+    <p>{t('warning')}</p>
     {#if offline}
-      <p>Saved on this device: Masque now works without an internet connection.</p>
+      <p>{t('offline')}</p>
     {/if}
     {#if backend}
-      <p class="backend">Detection runs on your {backend === 'webgpu' ? 'GPU (WebGPU)' : 'CPU (WebAssembly)'}.</p>
+      <p class="backend">{t(backend === 'webgpu' ? 'backendGpu' : 'backendCpu')}</p>
     {/if}
+    <label>
+      {t('language')}
+      <select value={i18n.locale} onchange={(e) => setLocale(e.currentTarget.value as Locale)}>
+        <option value="en" lang="en">English</option>
+        <option value="fr" lang="fr">Français</option>
+      </select>
+    </label>
   </footer>
 </main>
 

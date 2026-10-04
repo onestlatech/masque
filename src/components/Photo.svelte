@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { errorMessage, t } from '../lib/i18n.svelte.ts'
   import Editor from './Editor.svelte'
   import Settings from './Settings.svelte'
   import type { MaskOptions } from '../lib/anonymize/render.ts'
@@ -37,13 +38,13 @@
           const found = await worker.call('detect', { image: copy, threshold: MIN_THRESHOLD }, { transfer: [copy] })
           faces = found.map(fromDetection)
         } catch (e) {
-          onerror(`Face detection failed: ${(e as Error).message}. You can still add masks by hand.`)
+          onerror(t('detectionFailed', errorMessage(e)))
         } finally {
           detecting = false
         }
       },
       () => {
-        onerror(`Your browser cannot open “${file.name}”. Convert it to JPEG or PNG and try again.`)
+        onerror(t('cannotOpen', file.name))
         onclose()
       },
     )
@@ -58,9 +59,9 @@
 </script>
 
 <div class="workspace">
-  <section aria-label="Preview">
+  <section aria-label={t('preview')}>
     {#if detecting}
-      <p role="status">Looking for faces…</p>
+      <p role="status">{t('lookingForFaces')}</p>
     {/if}
     {#if bitmap}
       <Editor
@@ -79,7 +80,7 @@
   </section>
   <aside>
     <Settings bind:options bind:threshold />
-    <button type="button" class="primary" onclick={save} disabled={detecting}>Download</button>
-    <button type="button" onclick={onclose}>Start over</button>
+    <button type="button" class="primary" onclick={save} disabled={detecting}>{t('download')}</button>
+    <button type="button" onclick={onclose}>{t('startOver')}</button>
   </aside>
 </div>

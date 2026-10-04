@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n.svelte.ts'
   let { accept, onfiles }: { accept: string; onfiles: (files: File[]) => void } = $props()
 
   let over = $state(false)
@@ -30,8 +31,8 @@
       input.value = ''
     }}
   />
-  <strong>Choose photos or a video</strong>
-  <span>or drop them here</span>
+  <strong>{t('choose')}</strong>
+  <span>{t('dropHere')}</span>
 </label>
 
 <style>

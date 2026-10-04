@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatPercent, t } from '../lib/i18n.svelte.ts'
   import { applyMasks, type Box, type MaskOptions } from '../lib/anonymize/render.ts'
   import type { Face } from '../lib/faces.ts'
 
@@ -127,7 +128,7 @@
   <canvas
     bind:this={canvas}
     tabindex="0"
-    aria-label="Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it."
+    aria-label={t('editorLabel')}
     onpointerdown={pointerdown}
     onpointermove={pointermove}
     onpointerup={() => (drag = undefined)}
@@ -142,21 +143,21 @@
       class="remove"
       style:left="{(f.x2 / bitmap.width) * 100}%"
       style:top="{(f.y1 / bitmap.height) * 100}%"
-      aria-label="Remove mask"
+      aria-label={t('removeMask')}
       onclick={() => remove(f.id)}>×</button
     >
   {/each}
 </div>
 
 <details>
-  <summary>{faces.length} {faces.length === 1 ? 'mask' : 'masks'}</summary>
+  <summary>{t('masks', faces.length)}</summary>
   <ul>
     {#each faces as f, i (f.id)}
       <li data-box={[f.x1, f.y1, f.x2, f.y2, f.score].map((v) => v.toFixed(3)).join(',')} class:selected={f.id === selected}>
         <button type="button" class="link" onclick={() => (selected = f.id)}>
-          {f.manual ? 'Manual mask' : `Face ${i + 1}`}{f.manual ? '' : ` (${Math.round(f.score * 100)}%)`}
+          {f.manual ? t('manualMask') : t('face', i + 1, formatPercent(f.score))}
         </button>
-        <button type="button" aria-label="Remove mask {i + 1}" onclick={() => remove(f.id)}>Remove</button>
+        <button type="button" aria-label={t('removeMaskN', i + 1)} onclick={() => remove(f.id)}>{t('remove')}</button>
       </li>
     {/each}
   </ul>

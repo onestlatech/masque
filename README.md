@@ -6,6 +6,8 @@ Drop several photos to process them together and download one ZIP. In videos, fa
 
 Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) model (MIT), as in [deface](https://github.com/ORB-HD/deface). `public/models/centerface.onnx` is deface's model with dynamic input sizes, produced by `uv run scripts/prepare-model.py`.
 
+The interface is available in English and French; it follows the browser language and can be switched in the footer.
+
 ## Privacy
 
 - No backend, no analytics, no third-party requests. A strict Content Security Policy (`connect-src 'self'`) blocks the page from sending data anywhere else.

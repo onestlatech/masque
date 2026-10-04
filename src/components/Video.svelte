@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { errorMessage, t } from '../lib/i18n.svelte.ts'
   import { onDestroy, untrack } from 'svelte'
   import Editor from './Editor.svelte'
   import Progress from './Progress.svelte'
@@ -53,10 +54,10 @@
         id = info.video
         if (cancelled) return
         video = id
-        analysis = await run('Looking for faces…', (o) => worker.call('analyze', { video: info.video }, o))
+        analysis = await run(t('lookingForFaces'), (o) => worker.call('analyze', { video: info.video }, o))
       } catch (e) {
         if (cancelled) return
-        onerror(`Cannot process “${file.name}”: ${(e as Error).message}`)
+        onerror(t('cannotProcess', file.name, errorMessage(e)))
         onclose()
       }
     })()
@@ -103,7 +104,7 @@
 
   async function save() {
     try {
-      const out = await run('Exporting…', (o) =>
+      const out = await run(t('exporting'), (o) =>
         worker.call(
           'render',
           {
@@ -118,7 +119,7 @@
       )
       download(out, out.name)
     } catch (e) {
-      onerror(`Export failed: ${(e as Error).message}`)
+      onerror(t('exportFailed', errorMessage(e)))
     }
   }
 
@@ -126,7 +127,7 @@
 </script>
 
 <div class="workspace">
-  <section aria-label="Preview">
+  <section aria-label={t('preview')}>
     {#if bitmap}
       <Editor
         {bitmap}
@@ -140,17 +141,17 @@
     {/if}
     {#if analysis}
       <div class="timeline">
-        <button type="button" aria-label="Previous frame" onclick={() => (frame = Math.max(0, frame - 1))}>‹</button>
-        <input type="range" min="0" max={last} bind:value={frame} aria-label="Frame" />
-        <button type="button" aria-label="Next frame" onclick={() => (frame = Math.min(last, frame + 1))}>›</button>
+        <button type="button" aria-label={t('previousFrame')} onclick={() => (frame = Math.max(0, frame - 1))}>‹</button>
+        <input type="range" min="0" max={last} bind:value={frame} aria-label={t('frame')} />
+        <button type="button" aria-label={t('nextFrame')} onclick={() => (frame = Math.min(last, frame + 1))}>›</button>
         <output>{time(analysis.timestamps[frame])}</output>
       </div>
     {/if}
     {#if selectedTrack}
-      <div class="range" role="group" aria-label="Selected mask">
-        <span>Selected mask: frames {selectedTrack.start}–{selectedTrack.end}</span>
-        <button type="button" onclick={() => (selectedTrack.start = Math.min(frame, selectedTrack.end))}>Starts here</button>
-        <button type="button" onclick={() => (selectedTrack.end = Math.max(frame, selectedTrack.start))}>Ends here</button>
+      <div class="range" role="group" aria-label={t('selectedMask')}>
+        <span>{t('selectedRange', selectedTrack.start, selectedTrack.end)}</span>
+        <button type="button" onclick={() => (selectedTrack.start = Math.min(frame, selectedTrack.end))}>{t('startsHere')}</button>
+        <button type="button" onclick={() => (selectedTrack.end = Math.max(frame, selectedTrack.start))}>{t('endsHere')}</button>
       </div>
     {/if}
   </section>
@@ -161,10 +162,10 @@
     <Settings bind:options bind:threshold />
     <label class="audio">
       <input type="checkbox" bind:checked={discardAudio} />
-      Remove sound (voices can identify people)
+      {t('removeSound')}
     </label>
-    <button type="button" class="primary" onclick={save} disabled={!analysis || !!task}>Download</button>
-    <button type="button" onclick={onclose}>Start over</button>
+    <button type="button" class="primary" onclick={save} disabled={!analysis || !!task}>{t('download')}</button>
+    <button type="button" onclick={onclose}>{t('startOver')}</button>
   </aside>
 </div>
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { t } from '../lib/i18n.svelte.ts'
   import { onMount, untrack } from 'svelte'
   import Editor from './Editor.svelte'
   import Settings from './Settings.svelte'
@@ -97,21 +98,21 @@
 </script>
 
 <div class="workspace">
-  <section aria-label="Preview">
+  <section aria-label={t('preview')}>
     <ol class="items">
       {#each items as it, i (it.file)}
         <li>
           <button type="button" class:current={i === current} onclick={() => (current = i)} aria-current={i === current}>
             {i + 1}
             <small>
-              {#if it.status === 'waiting'}…{:else if it.status === 'error'}cannot open{:else}{visible(it.faces, threshold).length} masks{/if}
+              {#if it.status === 'waiting'}…{:else if it.status === 'error'}{t('unreadable')}{:else}{t('masks', visible(it.faces, threshold).length)}{/if}
             </small>
           </button>
         </li>
       {/each}
     </ol>
     {#if done < items.length}
-      <p role="status">Looking for faces… {done}/{items.length}</p>
+      <p role="status">{t('lookingProgress', done, items.length)}</p>
     {/if}
     {#if bitmap && item.status === 'ready'}
       {#key item}
@@ -133,9 +134,9 @@
   <aside>
     <Settings bind:options bind:threshold />
     <button type="button" class="primary" onclick={save} disabled={done < items.length || exporting}>
-      Download all ({items.filter((i) => i.status === 'ready').length} photos, ZIP)
+      {t('downloadAll', items.filter((i) => i.status === 'ready').length)}
     </button>
-    <button type="button" onclick={onclose}>Start over</button>
+    <button type="button" onclick={onclose}>{t('startOver')}</button>
   </aside>
 </div>
 

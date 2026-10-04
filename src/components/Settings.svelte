@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, t } from '../lib/i18n.svelte.ts'
   import type { MaskOptions } from '../lib/anonymize/render.ts'
   import { MIN_THRESHOLD } from '../lib/faces.ts'
 
@@ -6,36 +7,36 @@
 </script>
 
 <fieldset>
-  <legend>Masking</legend>
+  <legend>{t('masking')}</legend>
 
   <label>
-    Style
+    {t('style')}
     <select bind:value={options.mode}>
-      <option value="solid">Solid (safest)</option>
-      <option value="mosaic">Mosaic</option>
-      <option value="blur">Blur</option>
+      <option value="solid">{t('solid')}</option>
+      <option value="mosaic">{t('mosaic')}</option>
+      <option value="blur">{t('blur')}</option>
     </select>
   </label>
   {#if options.mode !== 'solid'}
-    <p class="warning" role="note">Mosaic and blur leave some information behind. Use solid for the strongest protection.</p>
+    <p class="warning" role="note">{t('weakWarning')}</p>
   {/if}
 
   <label>
-    Sensitivity
+    {t('threshold')}
     <input type="range" min={MIN_THRESHOLD} max="0.9" step="0.05" bind:value={threshold} aria-describedby="threshold-help" />
-    <output>{threshold.toFixed(2)}</output>
+    <output>{formatNumber(threshold, 2)}</output>
   </label>
-  <p id="threshold-help" class="help">Lower values catch more faces, along with more false positives.</p>
+  <p id="threshold-help" class="help">{t('thresholdHelp')}</p>
 
   <label>
-    Mask size
+    {t('maskSize')}
     <input type="range" min="1" max="2" step="0.1" bind:value={options.maskScale} />
-    <output>{options.maskScale.toFixed(1)}×</output>
+    <output>{formatNumber(options.maskScale, 1)}×</output>
   </label>
 
   <label class="inline">
     <input type="checkbox" bind:checked={options.ellipse} />
-    Oval masks
+    {t('oval')}
   </label>
 </fieldset>
 
@@ -50,7 +51,7 @@
 
   label {
     display: grid;
-    grid-template-columns: 7rem 1fr 3rem;
+    grid-template-columns: 9rem 1fr 3rem;
     align-items: center;
     gap: 0.5rem;
   }

@@ -52,8 +52,8 @@ export class Video {
   static async open(file: Blob): Promise<Video> {
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS })
     const track = await input.getPrimaryVideoTrack()
-    if (!track) throw new Error('This file has no video.')
-    if (!(await track.canDecode())) throw new Error('Your browser cannot decode this video format.')
+    if (!track) throw new Error('error.noVideo')
+    if (!(await track.canDecode())) throw new Error('error.cannotDecode')
     const info = {
       width: await track.getDisplayWidth(),
       height: await track.getDisplayHeight(),
@@ -139,7 +139,7 @@ export class Video {
       },
       audio: discardAudio ? { discard: true } : undefined,
     })
-    if (!conversion.isValid) throw new Error('Your browser cannot encode this video.')
+    if (!conversion.isValid) throw new Error('error.cannotEncode')
     conversion.onProgress = onProgress
     signal.addEventListener('abort', () => void conversion.cancel())
 
