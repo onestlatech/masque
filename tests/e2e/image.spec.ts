@@ -74,3 +74,18 @@ test('removes a mask with the keyboard and adds one by dragging', async ({ page 
   await canvas.press('Delete')
   await expect(masks).toHaveCount(count - 1)
 })
+
+test('removes a mask with its cross', async ({ page }) => {
+  const masks = page.locator('[data-box]')
+  const count = await masks.count()
+  const canvas = page.locator('canvas')
+  await canvas.evaluate((e) => e.scrollIntoView())
+  const box = (await canvas.boundingBox())!
+  const [x1, y1, x2, y2] = golden.reduce((a, b) => (b[4] > a[4] ? b : a))
+  const scale = box.width / 800
+  await page.mouse.move(box.x + ((x1 + x2) / 2) * scale, box.y + ((y1 + y2) / 2) * scale)
+
+  await page.getByRole('button', { name: 'Remove mask', exact: true }).click()
+  await expect(masks).toHaveCount(count - 1)
+  await expect(page.getByRole('button', { name: 'Remove mask', exact: true })).toHaveCount(0)
+})

@@ -24,6 +24,7 @@
   const HANDLE = 12 // CSS pixels
 
   let canvas: HTMLCanvasElement
+  let hovered = $state<number>()
   let drag:
     | { kind: 'new'; x: number; y: number; id?: number }
     | { kind: 'move' | 'resize'; x: number; y: number; id: number; orig: Box }
@@ -81,8 +82,11 @@
 
   function pointermove(e: PointerEvent) {
     const d = drag
-    if (!d) return
     const { x, y } = point(e)
+    if (!d) {
+      hovered = hit(x, y)?.id
+      return
+    }
     if (d.kind === 'new') {
       const box = { x1: Math.min(d.x, x), y1: Math.min(d.y, y), x2: Math.max(d.x, x), y2: Math.max(d.y, y) }
       if (d.id !== undefined) onchange(d.id, box)
@@ -114,15 +118,35 @@
   }
 </script>
 
-<canvas
-  bind:this={canvas}
-  tabindex="0"
-  aria-label="Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it."
-  onpointerdown={pointerdown}
-  onpointermove={pointermove}
-  onpointerup={() => (drag = undefined)}
-  onkeydown={keydown}
-></canvas>
+<!-- Sized to the image's aspect ratio so overlay positions in percent match canvas pixels. -->
+<div
+  class="stage"
+  style:aspect-ratio="{bitmap.width} / {bitmap.height}"
+  style:width="min(100%, {bitmap.width}px, calc(75vh * {bitmap.width} / {bitmap.height}))"
+>
+  <canvas
+    bind:this={canvas}
+    tabindex="0"
+    aria-label="Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it."
+    onpointerdown={pointerdown}
+    onpointermove={pointermove}
+    onpointerup={() => (drag = undefined)}
+    onpointerleave={(e) => {
+      if (!(e.relatedTarget instanceof Element && e.relatedTarget.closest('.remove'))) hovered = undefined
+    }}
+    onkeydown={keydown}
+  ></canvas>
+  {#each faces.filter((f) => f.id === selected || f.id === hovered) as f (f.id)}
+    <button
+      type="button"
+      class="remove"
+      style:left="{(f.x2 / bitmap.width) * 100}%"
+      style:top="{(f.y1 / bitmap.height) * 100}%"
+      aria-label="Remove mask"
+      onclick={() => remove(f.id)}>×</button
+    >
+  {/each}
+</div>
 
 <details>
   <summary>{faces.length} {faces.length === 1 ? 'mask' : 'masks'}</summary>
@@ -139,13 +163,32 @@
 </details>
 
 <style>
+  .stage {
+    position: relative;
+    margin: 0 auto;
+  }
+
   canvas {
     display: block;
-    max-width: 100%;
-    max-height: 75vh;
-    margin: 0 auto;
+    width: 100%;
+    height: 100%;
     touch-action: none;
     cursor: crosshair;
+  }
+
+  .remove {
+    position: absolute;
+    translate: -50% -50%;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 1.25rem;
+    font-weight: bold;
+    line-height: 1;
   }
 
   ul {
