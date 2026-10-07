@@ -19,6 +19,27 @@ import { boxesAt, type Track } from '../track/tracker.ts'
 import { findBox, zeroTimes } from './mp4.ts'
 import { outputName } from './image.ts'
 
+// WebKitGTK reports "unspecified" colour fields, outside the WebCodecs enums (unknown should be null), and Mediabunny
+// rejects every decoded frame. Report them as unknown instead.
+const colorSpace = Object.getOwnPropertyDescriptor(VideoFrame.prototype, 'colorSpace')
+if (colorSpace?.get) {
+  const get = colorSpace.get
+  const known = <T>(v: T | null) => ((v as string | null) === 'unspecified' ? undefined : (v ?? undefined))
+  Object.defineProperty(VideoFrame.prototype, 'colorSpace', {
+    ...colorSpace,
+    get(this: VideoFrame) {
+      const c: VideoColorSpace = get.call(this)
+      if (![c.primaries, c.transfer, c.matrix].includes('unspecified' as never)) return c
+      return new VideoColorSpace({
+        primaries: known(c.primaries),
+        transfer: known(c.transfer),
+        matrix: known(c.matrix),
+        fullRange: c.fullRange ?? undefined,
+      })
+    },
+  })
+}
+
 export interface VideoInfo {
   width: number
   height: number
