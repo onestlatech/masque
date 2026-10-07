@@ -7,7 +7,6 @@
   import { defaultMaskOptions, type MaskOptions } from './lib/anonymize/render.ts'
   import { Engine } from './lib/detect/client.ts'
   import type { Backend } from './lib/detect/detector.ts'
-  import fist from './assets/brand/fist.png'
   import offensive from './assets/brand/offensive.png'
 
   const worker = new Engine()
@@ -58,7 +57,7 @@
 
 <main>
   <header>
-    <h1><img src={fist} alt="" width="64" height="64" />Masque</h1>
+    <h1><span class="fist" aria-hidden="true">✊</span>Masque</h1>
     <p>{t('tagline')}</p>
   </header>
 
@@ -93,7 +92,7 @@
       <ul class="orgs">
         <li>
           <a href="https://onestla.tech" target="_blank" rel="noopener noreferrer" class="onestla">
-            <img src={fist} alt="" width="48" height="48" /><span>on<b>est</b>la.tech<b>/</b></span>
+            <span class="fist" aria-hidden="true">✊</span><span>on<b>est</b>la.tech<b>/</b></span>
           </a>
           <p>{t('onestlaDescription')}</p>
         </li>
@@ -166,11 +165,13 @@
     font-weight: 400;
   }
 
-  h1 img {
-    height: 1em;
-    width: auto;
+  /* System emoji font: the glyph varies by device, which is fine. */
+  .fist {
+    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+  }
+
+  h1 .fist {
     margin-right: 0.5em;
-    vertical-align: -0.1em;
   }
 
   header p {
@@ -232,9 +233,8 @@
     font-size: 1.5rem;
   }
 
-  .onestla img {
-    width: 48px;
-    height: 48px;
+  .onestla .fist {
+    font-size: 2.5rem;
   }
 
   .orgs p {
