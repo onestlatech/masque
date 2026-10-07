@@ -108,10 +108,14 @@
 
     <section aria-labelledby="credits">
       <h2 id="credits">{t('credits')}</h2>
+      <p>
+        {t('freeSoftware')}
+        <a href="https://github.com/onestlatech/masque" target="_blank" rel="noopener noreferrer">github.com/onestlatech/masque</a>
+      </p>
       <ul class="credits">
         {#each CREDITS as c (c.name)}
           <li>
-            <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>: {t(c.role)} ({c.license})
+            <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>{t('colon')}{t(c.role)} ({c.license})
           </li>
         {/each}
       </ul>

@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "description": "Anonymize faces in photos and videos, entirely in your browser",
   "license": "AGPL-3.0-or-later",
+  "repository": "github:onestlatech/masque",
   "type": "module",
   "scripts": {
     "dev": "vite",
