@@ -19,21 +19,28 @@ import { boxesAt, type Track } from '../track/tracker.ts'
 import { findBox, zeroTimes } from './mp4.ts'
 import { outputName } from './image.ts'
 
-// WebKitGTK reports "unspecified" colour fields, outside the WebCodecs enums (unknown should be null), and Mediabunny
-// rejects every decoded frame. Report them as unknown instead.
+// WebKit's colour enums go beyond WebCodecs ("unspecified", "smpte240m"...) and Mediabunny rejects such frames.
+// Report out-of-spec values as unknown until https://github.com/Vanilagy/mediabunny/pull/556 ships.
+const SPEC_COLOR_VALUES = {
+  primaries: ['bt709', 'bt470bg', 'smpte170m', 'bt2020', 'smpte432'],
+  transfer: ['bt709', 'smpte170m', 'iec61966-2-1', 'linear', 'pq', 'hlg'],
+  matrix: ['rgb', 'bt709', 'bt470bg', 'smpte170m', 'bt2020-ncl'],
+} satisfies Record<'primaries' | 'transfer' | 'matrix', string[]>
+
 const colorSpace = Object.getOwnPropertyDescriptor(VideoFrame.prototype, 'colorSpace')
 if (colorSpace?.get) {
   const get = colorSpace.get
-  const known = <T>(v: T | null) => ((v as string | null) === 'unspecified' ? undefined : (v ?? undefined))
   Object.defineProperty(VideoFrame.prototype, 'colorSpace', {
     ...colorSpace,
     get(this: VideoFrame) {
       const c: VideoColorSpace = get.call(this)
-      if (![c.primaries, c.transfer, c.matrix].includes('unspecified' as never)) return c
+      const spec = <K extends keyof typeof SPEC_COLOR_VALUES>(key: K) =>
+        c[key] !== null && SPEC_COLOR_VALUES[key].includes(c[key]) ? c[key] : undefined
+      if ((['primaries', 'transfer', 'matrix'] as const).every((k) => c[k] === null || spec(k) !== undefined)) return c
       return new VideoColorSpace({
-        primaries: known(c.primaries),
-        transfer: known(c.transfer),
-        matrix: known(c.matrix),
+        primaries: spec('primaries'),
+        transfer: spec('transfer'),
+        matrix: spec('matrix'),
         fullRange: c.fullRange ?? undefined,
       })
     },
