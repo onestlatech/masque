@@ -6,7 +6,7 @@ import { defaultClientConditions, defineConfig, transformWithOxc, type Plugin, t
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
 
-// Hosts without header support still get the CSP through <meta>; _headers covers Netlify.
+// Hosts without header support still get the CSP through <meta>; _headers covers Netlify, .htaccess covers Apache.
 function security(): Plugin {
   return {
     name: 'masque:security',
@@ -19,8 +19,23 @@ function security(): Plugin {
       },
     ],
     generateBundle() {
-      const lines = Object.entries(securityHeaders).map(([k, v]) => `  ${k}: ${v}`)
+      const headers = Object.entries(securityHeaders)
+      const lines = headers.map(([k, v]) => `  ${k}: ${v}`)
       this.emitFile({ type: 'asset', fileName: '_headers', source: `/*\n${lines.join('\n')}\n` })
+      // No <IfModule>: without mod_headers, Apache fails loudly instead of serving the app unprotected.
+      const htaccess = [
+        'AddType application/wasm .wasm',
+        // TLS may end at a proxy, which reports the original scheme in X-Forwarded-Proto.
+        'RewriteEngine On',
+        'RewriteCond %{HTTPS} off',
+        'RewriteCond %{HTTP:X-Forwarded-Proto} !https',
+        'RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]',
+        ...headers.map(([k, v]) => `Header always set ${k} "${v}"`),
+        '<IfModule mod_deflate.c>',
+        '  AddOutputFilterByType DEFLATE application/wasm text/html text/css text/javascript application/javascript application/manifest+json image/svg+xml',
+        '</IfModule>',
+      ]
+      this.emitFile({ type: 'asset', fileName: '.htaccess', source: `${htaccess.join('\n')}\n` })
     },
   }
 }
@@ -39,7 +54,7 @@ function serviceWorker(): Plugin {
       const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
         .filter((f) => f.isFile())
         .map((f) => relative(outDir, join(f.parentPath, f.name)).split('\\').join('/'))
-        .filter((f) => f !== '_headers' && f !== 'sw.js')
+        .filter((f) => f !== '_headers' && f !== '.htaccess' && f !== 'sw.js')
         .sort()
       const precache = files.map((f) => (f === 'index.html' ? config.base : config.base + f))
       const hash = createHash('sha256')
