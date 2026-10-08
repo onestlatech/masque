@@ -55,22 +55,26 @@ export class Detector {
       ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, 0, inputWidth, inputHeight)
       const { data } = ctx.getImageData(0, 0, inputWidth, inputHeight)
       const input = new ort.Tensor('float32', toTensor(data, inputWidth, inputHeight), [1, 3, inputHeight, inputWidth])
-      const out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
-      const h = inputHeight / 4
-      const w = inputWidth / 4
-      const sx = region.width / inputWidth
-      const sy = region.height / inputHeight
-      for (const d of decode(out['537'].data as Float32Array, out['538'].data as Float32Array, out['539'].data as Float32Array, h, w, threshold)) {
-        found.push({
-          x1: region.x + d.x1 * sx,
-          y1: region.y + d.y1 * sy,
-          x2: region.x + d.x2 * sx,
-          y2: region.y + d.y2 * sy,
-          score: d.score,
-        })
+      let out: ort.InferenceSession.ReturnType | undefined
+      try {
+        out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
+        const h = inputHeight / 4
+        const w = inputWidth / 4
+        const sx = region.width / inputWidth
+        const sy = region.height / inputHeight
+        for (const d of decode(out['537'].data as Float32Array, out['538'].data as Float32Array, out['539'].data as Float32Array, h, w, threshold)) {
+          found.push({
+            x1: region.x + d.x1 * sx,
+            y1: region.y + d.y1 * sy,
+            x2: region.x + d.x2 * sx,
+            y2: region.y + d.y2 * sy,
+            score: d.score,
+          })
+        }
+      } finally {
+        input.dispose()
+        if (out) for (const t of Object.values(out)) t.dispose()
       }
-      input.dispose()
-      for (const t of Object.values(out)) t.dispose()
     }
     return nms(found, NMS_THRESHOLD)
   }
