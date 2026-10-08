@@ -30,25 +30,36 @@
 
   $effect(() => {
     let b: ImageBitmap | undefined
+    let stale = false
+    const controller = new AbortController()
     loadImage(file).then(
       async (loaded) => {
+        if (stale) return loaded.close()
         bitmap = b = loaded
+        let copy: ImageBitmap | undefined
         try {
-          const copy = await createImageBitmap(loaded)
-          const found = await worker.call('detect', { image: copy, threshold: MIN_THRESHOLD }, { transfer: [copy] })
-          faces = found.map(fromDetection)
+          copy = await createImageBitmap(loaded)
+          const found = await worker.call('detect', { image: copy, threshold: MIN_THRESHOLD }, { transfer: [copy], signal: controller.signal })
+          if (!stale) faces = found.map(fromDetection)
         } catch (e) {
+          if (stale) return
           onerror(t('detectionFailed', errorMessage(e)))
         } finally {
-          detecting = false
+          copy?.close()
+          if (!stale) detecting = false
         }
       },
       () => {
+        if (stale) return
         onerror(t('cannotOpen', file.name))
         onclose()
       },
     )
-    return () => b?.close()
+    return () => {
+      stale = true
+      controller.abort()
+      b?.close()
+    }
   })
 
   async function save() {
