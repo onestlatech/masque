@@ -6,7 +6,7 @@ import { defaultClientConditions, defineConfig, transformWithOxc, type Plugin, t
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
 
-// Hosts without header support still get the CSP through <meta>; _headers covers Cloudflare Pages and Netlify.
+// Hosts without header support still get the CSP through <meta>; _headers covers Netlify.
 function security(): Plugin {
   return {
     name: 'masque:security',
