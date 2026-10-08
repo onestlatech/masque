@@ -79,15 +79,20 @@ export class Video {
 
   static async open(file: Blob): Promise<Video> {
     const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS })
-    const track = await input.getPrimaryVideoTrack()
-    if (!track) throw new Error('error.noVideo')
-    if (!(await track.canDecode())) throw new Error('error.cannotDecode')
-    const info = {
-      width: await track.getDisplayWidth(),
-      height: await track.getDisplayHeight(),
-      duration: await track.computeDuration(),
+    try {
+      const track = await input.getPrimaryVideoTrack()
+      if (!track) throw new Error('error.noVideo')
+      if (!(await track.canDecode())) throw new Error('error.cannotDecode')
+      const info = {
+        width: await track.getDisplayWidth(),
+        height: await track.getDisplayHeight(),
+        duration: await track.computeDuration(),
+      }
+      return new Video(file, input, track, info)
+    } catch (e) {
+      input.dispose()
+      throw e
     }
-    return new Video(file, input, track, info)
   }
 
   async analyze(
@@ -109,6 +114,8 @@ export class Video {
         sample.close()
       }
     }
+    signal.throwIfAborted()
+    if (!timestamps.length) throw new Error('error.noVideo')
     return { fps: timestamps.length / this.info.duration, timestamps, detections }
   }
 
