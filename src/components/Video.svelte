@@ -52,7 +52,10 @@
       try {
         const info = await worker.call('open', { file })
         id = info.video
-        if (cancelled) return
+        if (cancelled) {
+          await worker.call('close', { video: id })
+          return
+        }
         video = id
         analysis = await run(t('lookingForFaces'), (o) => worker.call('analyze', { video: info.video }, o))
       } catch (e) {
@@ -64,7 +67,7 @@
     return () => {
       cancelled = true
       task?.controller.abort()
-      if (id !== undefined) worker.call('close', { video: id })
+      if (id !== undefined) worker.call('close', { video: id }).catch((e) => onerror(t('cannotProcess', file.name, errorMessage(e))))
     }
   })
 
@@ -78,12 +81,18 @@
   $effect(() => {
     if (video === undefined || !analysis) return
     let stale = false
-    worker.call('frame', { video, timestamp: analysis.timestamps[frame] }).then((b) => {
+    const controller = new AbortController()
+    worker.call('frame', { video, timestamp: analysis.timestamps[frame] }, { signal: controller.signal }).then((b) => {
       if (stale) return b.close()
       bitmap?.close()
       bitmap = b
+    }).catch((e) => {
+      if (!stale) onerror(t('cannotProcess', file.name, errorMessage(e)))
     })
-    return () => (stale = true)
+    return () => {
+      stale = true
+      controller.abort()
+    }
   })
 
   onDestroy(() => bitmap?.close())
