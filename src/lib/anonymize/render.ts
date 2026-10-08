@@ -32,7 +32,7 @@ export function maskRect(b: Box, maskScale: number, width: number, height: numbe
   return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) }
 }
 
-/** Number of samples across the longest side: few enough that features cannot be recovered. */
+/** Number of samples across the longest side. */
 const SAMPLES: Record<Exclude<Mode, 'solid'>, number> = { mosaic: 6, blur: 3 }
 
 let scratch: OffscreenCanvasRenderingContext2D | undefined
@@ -63,6 +63,7 @@ export function applyMasks(ctx: Context, boxes: Box[], options: MaskOptions) {
       scratch.imageSmoothingQuality = 'high'
       scratch.drawImage(ctx.canvas, r.x, r.y, r.width, r.height, 0, 0, sw, sh)
       ctx.imageSmoothingEnabled = options.mode === 'blur'
+      ctx.clearRect(r.x, r.y, r.width, r.height)
       ctx.drawImage(scratch.canvas, 0, 0, sw, sh, r.x, r.y, r.width, r.height)
     }
     ctx.restore()
