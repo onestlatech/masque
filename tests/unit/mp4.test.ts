@@ -29,3 +29,27 @@ test('findBox skips to the requested top-level box', () => {
   expect(found).toEqual({ at: 120, size: 30 })
   expect(findBox((at, length) => file.subarray(at, at + length), file.length, 'free')).toBeUndefined()
 })
+
+test.each([0, 7, 15, 40])('rejects invalid extended box size %i', (size) => {
+  const bytes = Uint8Array.from([0, 0, 0, 1, 109, 111, 111, 118, 0, 0, 0, 0, 0, 0, 0, size])
+  expect(() => zeroTimes(bytes)).toThrow()
+  expect(() => findBox((at, length) => bytes.subarray(at, at + length), bytes.length, 'moov')).toThrow()
+})
+
+test('rejects truncated time fields instead of touching a neighbouring box', () => {
+  expect(() => zeroTimes(Uint8Array.from(box('moov', box('mvhd', [0, 0, 0, 0]), box('free', Array(16).fill(1)))))).toThrow()
+})
+
+test('rejects excessive box nesting', () => {
+  let nested = box('free')
+  for (let i = 0; i < 20; i++) nested = box('moov', nested)
+  expect(() => zeroTimes(Uint8Array.from(nested))).toThrow()
+})
+
+test('reads a final eight-byte box without reading past EOF', () => {
+  const bytes = Uint8Array.from(box('moov'))
+  expect(findBox((at, length) => {
+    expect(at + length).toBeLessThanOrEqual(bytes.length)
+    return bytes.subarray(at, at + length)
+  }, bytes.length, 'moov')).toEqual({ at: 0, size: 8 })
+})
