@@ -26,7 +26,7 @@ sw.addEventListener('install', (e) => {
 
 sw.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))),
+    caches.keys().then((keys) => Promise.all(keys.filter((k) => k.startsWith('masque-') && k !== CACHE).map((k) => caches.delete(k)))),
   )
 })
 
@@ -36,5 +36,5 @@ sw.addEventListener('fetch', (e) => {
   // Single-page app: every navigation gets the cached shell, with its security headers.
   const key = request.mode === 'navigate' ? new URL('./', sw.registration.scope).href : request
   // Servers may send Vary: Origin, and module scripts are requested with an Origin header the precache lacked.
-  e.respondWith(caches.match(key, { ignoreVary: true }).then((cached) => cached ?? fetch(request)))
+  e.respondWith(caches.open(CACHE).then(async (cache) => (await cache.match(key, { ignoreVary: true })) ?? fetch(request)))
 })

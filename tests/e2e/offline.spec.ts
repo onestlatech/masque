@@ -2,8 +2,13 @@ import { expect, test } from './fixtures'
 
 test('works offline once loaded', async ({ page, context, browserName }) => {
   test.skip(browserName === 'webkit', 'Playwright cannot navigate offline in WebKit, even to service worker responses')
+  await page.addInitScript(async () => {
+    const cache = await caches.open('another-app')
+    await cache.put('/', new Response('Unrelated cached page'))
+  })
   await page.goto('/')
   await expect(page.getByText('works without an internet connection')).toBeVisible({ timeout: 60_000 })
+  expect(await page.evaluate(() => caches.has('another-app'))).toBe(true)
 
   await context.setOffline(true)
   await page.reload()
