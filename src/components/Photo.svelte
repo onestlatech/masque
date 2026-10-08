@@ -27,6 +27,7 @@
   let faces = $state<Face[]>([])
   let detecting = $state(true)
   let detectionFailed = $state(false)
+  let exporting = $state(false)
   const shown = $derived(visible(faces, threshold))
 
   $effect(() => {
@@ -65,9 +66,16 @@
   })
 
   async function save() {
-    const type = outputType(file.type)
-    const blob = await exportImage(bitmap!, $state.snapshot(shown), $state.snapshot(options), type)
-    download(blob, outputName(type))
+    exporting = true
+    try {
+      const type = outputType(file.type)
+      const blob = await exportImage(bitmap!, $state.snapshot(shown), $state.snapshot(options), type)
+      download(blob, outputName(type))
+    } catch (e) {
+      onerror(t('exportFailed', errorMessage(e)))
+    } finally {
+      exporting = false
+    }
   }
 </script>
 
@@ -93,7 +101,7 @@
   </section>
   <aside>
     <Settings bind:options bind:threshold />
-    <button type="button" class="primary" onclick={save} disabled={!bitmap || detecting || (detectionFailed && !shown.length)}>{t('download')}</button>
+    <button type="button" class="primary" onclick={save} disabled={!bitmap || detecting || exporting || (detectionFailed && !shown.length)}>{t('download')}</button>
     <button type="button" onclick={onclose}>{t('startOver')}</button>
   </aside>
 </div>
