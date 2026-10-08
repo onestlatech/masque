@@ -75,6 +75,7 @@ export class Detector {
       ctx = new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })!
       this.canvases.set(key, ctx)
     }
+    ctx.clearRect(0, 0, width, height)
     return ctx
   }
 }

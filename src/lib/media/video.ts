@@ -100,6 +100,7 @@ export class Video {
     for await (const sample of this.sink.samples()) {
       try {
         signal.throwIfAborted()
+        this.canvas.clearRect(0, 0, this.info.width, this.info.height)
         sample.draw(this.canvas, 0, 0)
         timestamps.push(sample.timestamp)
         detections.push(await detect(this.canvas.canvas))
@@ -115,6 +116,7 @@ export class Video {
     const sample = await this.sink.getSample(timestamp)
     if (!sample) throw new Error(`No frame at ${timestamp}s`)
     try {
+      this.canvas.clearRect(0, 0, this.info.width, this.info.height)
       sample.draw(this.canvas, 0, 0)
     } finally {
       sample.close()
@@ -158,6 +160,7 @@ export class Video {
         processedWidth: this.info.width,
         processedHeight: this.info.height,
         process: (sample) => {
+          ctx.clearRect(0, 0, this.info.width, this.info.height)
           sample.draw(ctx, 0, 0)
           applyMasks(ctx, boxesAt(tracks, nearest(timestamps, sample.timestamp)), options)
           return new VideoSample(

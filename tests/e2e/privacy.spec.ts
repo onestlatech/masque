@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { expect, test } from './fixtures'
 
+const fixture = new URL('../fixtures/city.jpg', import.meta.url).pathname
+
 test('mosaic replaces semitransparent source pixels', async ({ page }) => {
   await page.goto('/')
   const png = await page.evaluate(async () => {
@@ -35,4 +37,19 @@ test('mosaic replaces semitransparent source pixels', async ({ page }) => {
   expect(Math.abs(pixels[0] - pixels[4])).toBeLessThan(5)
   expect(Math.abs(pixels[2] - pixels[6])).toBeLessThan(5)
   expect(pixels[3]).toBeLessThan(135)
+})
+
+test('transparent photos do not inherit detections from a previous photo', async ({ page }) => {
+  await page.goto('/')
+  await page.locator('input[type=file]').setInputFiles(fixture)
+  await expect(page.locator('summary')).toHaveText(/^[1-9]\d* masks$/, { timeout: 60_000 })
+  const png = await page.locator('canvas').evaluate(async (canvas: HTMLCanvasElement) => {
+    const blank = new OffscreenCanvas(canvas.width, canvas.height)
+    blank.getContext('2d')
+    return [...new Uint8Array(await (await blank.convertToBlob()).arrayBuffer())]
+  })
+  await page.getByRole('button', { name: 'Start over' }).click()
+  await page.locator('input[type=file]').setInputFiles({ name: 'transparent.png', mimeType: 'image/png', buffer: Buffer.from(png) })
+  await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled({ timeout: 60_000 })
+  await expect(page.locator('summary')).toHaveText('0 masks')
 })
