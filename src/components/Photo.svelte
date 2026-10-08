@@ -26,6 +26,7 @@
   let bitmap = $state.raw<ImageBitmap>()
   let faces = $state<Face[]>([])
   let detecting = $state(true)
+  let detectionFailed = $state(false)
   const shown = $derived(visible(faces, threshold))
 
   $effect(() => {
@@ -40,9 +41,10 @@
         try {
           copy = await createImageBitmap(loaded)
           const found = await worker.call('detect', { image: copy, threshold: MIN_THRESHOLD }, { transfer: [copy], signal: controller.signal })
-          if (!stale) faces = found.map(fromDetection)
+          if (!stale) faces = [...faces.filter((f) => f.manual), ...found.map(fromDetection)]
         } catch (e) {
           if (stale) return
+          detectionFailed = true
           onerror(t('detectionFailed', errorMessage(e)))
         } finally {
           copy?.close()
@@ -91,7 +93,7 @@
   </section>
   <aside>
     <Settings bind:options bind:threshold />
-    <button type="button" class="primary" onclick={save} disabled={detecting}>{t('download')}</button>
+    <button type="button" class="primary" onclick={save} disabled={!bitmap || detecting || (detectionFailed && !shown.length)}>{t('download')}</button>
     <button type="button" onclick={onclose}>{t('startOver')}</button>
   </aside>
 </div>

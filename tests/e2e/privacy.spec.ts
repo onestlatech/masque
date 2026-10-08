@@ -3,6 +3,23 @@ import { expect, test } from './fixtures'
 
 const fixture = new URL('../fixtures/city.jpg', import.meta.url).pathname
 
+test('detection failure requires a manual mask before downloading', async ({ page }) => {
+  await page.route('**/models/centerface.onnx', (route) => route.abort())
+  await page.goto('/')
+  await page.locator('input[type=file]').setInputFiles(fixture)
+  await expect(page.getByRole('alert')).toContainText('Face detection failed')
+  const download = page.getByRole('button', { name: 'Download', exact: true })
+  await expect(download).toBeDisabled()
+  const canvas = page.locator('canvas')
+  await canvas.scrollIntoViewIfNeeded()
+  const bounds = (await canvas.boundingBox())!
+  await page.mouse.move(bounds.x + 10, bounds.y + 10)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + 60, bounds.y + 60)
+  await page.mouse.up()
+  await expect(download).toBeEnabled()
+})
+
 test('mosaic replaces semitransparent source pixels', async ({ page }) => {
   await page.goto('/')
   const png = await page.evaluate(async () => {
