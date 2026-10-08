@@ -144,7 +144,7 @@
   <aside>
     <Settings bind:options bind:threshold />
     <button type="button" class="primary" onclick={save} disabled={done < items.length || exporting}>
-      {t('downloadAll', items.filter((i) => i.status === 'ready').length)}
+      {done < items.length ? t('lookingProgress', done, items.length) : t('downloadAll', items.filter((i) => i.status === 'ready').length)}
     </button>
     <button type="button" onclick={onclose}>{t('openAnother')}</button>
   </aside>
