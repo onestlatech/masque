@@ -80,3 +80,33 @@ test('scrubs frames and adds a mask spanning the video', async ({ page }) => {
   await page.getByRole('button', { name: 'Ends here' }).click()
   await expect(page.getByText('Selected mask: frames 0–15')).toBeVisible()
 })
+
+test('mask range buttons follow the displayed frame during a pending seek', async ({ page }) => {
+  await page.addInitScript(() => {
+    const post = Worker.prototype.postMessage
+    Worker.prototype.postMessage = function (message, transfer) {
+      if (message.type === 'frame' && message.timestamp > 0) return
+      post.call(this, message, Array.isArray(transfer) ? { transfer } : transfer)
+    }
+  })
+  await page.goto('/')
+  await page.locator('input[type=file]').setInputFiles(fixture)
+  const slider = page.getByRole('slider', { name: 'Frame' })
+  await expect(slider).toBeVisible({ timeout: 120_000 })
+  await expect(page.locator('summary')).toHaveText(/^[1-9]\d* masks$/)
+  const canvas = page.locator('canvas')
+  await canvas.scrollIntoViewIfNeeded()
+  const box = (await canvas.boundingBox())!
+  await page.mouse.move(box.x + box.width - 60, box.y + box.height - 60)
+  await page.mouse.down()
+  await page.mouse.move(box.x + box.width - 20, box.y + box.height - 20)
+  await page.mouse.up()
+  await expect(page.getByText('Selected mask: frames 0–29')).toBeVisible()
+
+  await slider.fill('15')
+  await expect(page.locator('.timeline output')).toHaveText('0:00.00')
+  await page.getByRole('button', { name: 'Starts here' }).click()
+  await expect(page.getByText('Selected mask: frames 0–29')).toBeVisible()
+  await page.getByRole('button', { name: 'Ends here' }).click()
+  await expect(page.getByText('Selected mask: frames 0–0')).toBeVisible()
+})

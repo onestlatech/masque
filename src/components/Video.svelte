@@ -32,12 +32,15 @@
   let tracks = $state<Track[]>([])
   let frame = $state(0)
   let bitmap = $state.raw<ImageBitmap>()
+  let bitmapFrame = $state<number>()
   let selected = $state<number>()
   let discardAudio = $state(false)
   let task = $state<{ label: string; fraction: number; controller: AbortController }>()
 
   const last = $derived(analysis ? analysis.timestamps.length - 1 : 0)
   const selectedTrack = $derived(tracks.find((t) => t.id === selected))
+  // Masks follow the frame on screen, which lags behind the slider while the next frame decodes.
+  const shownFrame = $derived(bitmapFrame ?? frame)
 
   function run<T>(label: string, work: (o: { signal: AbortSignal; onProgress: (f: number) => void }) => Promise<T>) {
     const controller = new AbortController()
@@ -82,10 +85,12 @@
     if (video === undefined || !analysis) return
     let stale = false
     const controller = new AbortController()
-    worker.call('frame', { video, timestamp: analysis.timestamps[frame] }, { signal: controller.signal }).then((b) => {
+    const requestedFrame = frame
+    worker.call('frame', { video, timestamp: analysis.timestamps[requestedFrame] }, { signal: controller.signal }).then((b) => {
       if (stale) return b.close()
       bitmap?.close()
       bitmap = b
+      bitmapFrame = requestedFrame
     }).catch((e) => {
       if (!stale) onerror(t('cannotProcess', file.name, errorMessage(e)))
     })
@@ -99,14 +104,14 @@
 
   const faces = $derived(
     tracks.flatMap((t): Face[] => {
-      const b = boxAt(t, frame)
+      const b = boxAt(t, shownFrame)
       return b ? [{ ...b, id: t.id, score: t.score, manual: t.manual }] : []
     }),
   )
 
   function add(box: Box) {
     // New masks cover the whole video; trim them with "Starts here" and "Ends here".
-    const t = newTrack(frame, box, 0, last, 1, true)
+    const t = newTrack(shownFrame, box, 0, last, 1, true)
     tracks.push(t)
     return t.id
   }
@@ -144,7 +149,7 @@
         {options}
         bind:selected
         onadd={add}
-        onchange={(id, box) => setKeyframe(tracks.find((t) => t.id === id)!, frame, box)}
+        onchange={(id, box) => setKeyframe(tracks.find((t) => t.id === id)!, shownFrame, box)}
         onremove={(id) => (tracks = tracks.filter((t) => t.id !== id))}
       />
     {/if}
@@ -153,14 +158,14 @@
         <button type="button" aria-label={t('previousFrame')} onclick={() => (frame = Math.max(0, frame - 1))}>‹</button>
         <input type="range" min="0" max={last} bind:value={frame} aria-label={t('frame')} />
         <button type="button" aria-label={t('nextFrame')} onclick={() => (frame = Math.min(last, frame + 1))}>›</button>
-        <output>{time(analysis.timestamps[frame])}</output>
+        <output>{time(analysis.timestamps[shownFrame])}</output>
       </div>
     {/if}
     {#if selectedTrack}
       <div class="range" role="group" aria-label={t('selectedMask')}>
         <span>{t('selectedRange', selectedTrack.start, selectedTrack.end)}</span>
-        <button type="button" onclick={() => (selectedTrack.start = Math.min(frame, selectedTrack.end))}>{t('startsHere')}</button>
-        <button type="button" onclick={() => (selectedTrack.end = Math.max(frame, selectedTrack.start))}>{t('endsHere')}</button>
+        <button type="button" onclick={() => (selectedTrack.start = Math.min(shownFrame, selectedTrack.end))}>{t('startsHere')}</button>
+        <button type="button" onclick={() => (selectedTrack.end = Math.max(shownFrame, selectedTrack.start))}>{t('endsHere')}</button>
       </div>
     {/if}
   </section>
