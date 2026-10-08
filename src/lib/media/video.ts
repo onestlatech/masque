@@ -116,7 +116,7 @@ export class Video {
     }
     signal.throwIfAborted()
     if (!timestamps.length) throw new Error('error.noVideo')
-    return { fps: timestamps.length / this.info.duration, timestamps, detections }
+    return { fps: timestamps.length / (this.info.duration - timestamps[0]), timestamps, detections }
   }
 
   async frame(timestamp: number): Promise<ImageBitmap> {
@@ -152,11 +152,16 @@ export class Video {
         : memory,
     })
 
+    const video = await input.getPrimaryVideoTrack()
+    if (!video) throw new Error('error.noVideo')
+    const audio = discardAudio ? null : await input.getPrimaryAudioTrack()
+    const start = Math.max(0, await input.getFirstTimestamp(audio ? [video, audio] : [video]))
     const ctx = this.canvas
     const conversion = await Conversion.init({
       input,
       output,
       tracks: 'primary',
+      trim: { start },
       // Drops title, GPS location, device and date tags.
       tags: {},
       showWarnings: false,
@@ -169,7 +174,8 @@ export class Video {
         process: (sample) => {
           ctx.clearRect(0, 0, this.info.width, this.info.height)
           sample.draw(ctx, 0, 0)
-          applyMasks(ctx, boxesAt(tracks, nearest(timestamps, sample.timestamp)), options)
+          // Conversion rebases timestamps; masks refer to the source timeline.
+          applyMasks(ctx, boxesAt(tracks, nearest(timestamps, sample.timestamp + start)), options)
           return new VideoSample(
             new VideoFrame(ctx.canvas, { timestamp: sample.microsecondTimestamp, duration: sample.microsecondDuration }),
           )
