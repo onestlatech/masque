@@ -149,6 +149,8 @@
   {/each}
 </div>
 
+<p class="hint">{t('drawHint')}</p>
+
 <details>
   <summary>{t('masks', faces.length)}</summary>
   <ul>
@@ -191,6 +193,12 @@
     font-size: 1.25rem;
     font-weight: bold;
     line-height: 1;
+  }
+
+  .hint {
+    margin: 0.5rem 0 0;
+    font-size: 0.875rem;
+    color: var(--muted);
   }
 
   ul {

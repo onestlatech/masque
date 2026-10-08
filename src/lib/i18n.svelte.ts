@@ -25,6 +25,7 @@ const en = {
   editorLabel:
     'Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it.',
   masks: (n: number) => `${n} ${n === 1 ? 'mask' : 'masks'}`,
+  drawHint: 'Missed a face? Drag across it with your finger or mouse to add a mask.',
   manualMask: 'Manual mask',
   face: (n: number, score: string) => `Face ${n} (${score})`,
   remove: 'Remove',
@@ -99,6 +100,7 @@ const fr: typeof en = {
   editorLabel:
     'Image aux visages masqués. Faites glisser pour ajouter un masque ; sélectionnez un masque pour le déplacer, le redimensionner par son coin ou le supprimer.',
   masks: (n) => `${n} ${n > 1 ? 'masques' : 'masque'}`,
+  drawHint: 'Un visage a été oublié ? Faites glisser le doigt ou la souris dessus pour ajouter un masque.',
   manualMask: 'Masque manuel',
   face: (n, score) => `Visage ${n} (${score})`,
   remove: 'Supprimer',
