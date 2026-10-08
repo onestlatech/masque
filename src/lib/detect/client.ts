@@ -1,6 +1,6 @@
 import type { Request, Requests, Response } from './worker.ts'
 
-type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; onProgress?: (p: number) => void }
+type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; cleanup: () => void; onProgress?: (p: number) => void }
 
 export interface CallOptions {
   transfer?: Transferable[]
@@ -20,6 +20,7 @@ export class Engine {
       if (!p) return
       if ('progress' in data) return p.onProgress?.(data.progress)
       this.pending.delete(data.id)
+      p.cleanup()
       if ('error' in data) p.reject(new Error(data.error))
       else p.resolve(data.result)
     })
@@ -27,10 +28,19 @@ export class Engine {
 
   call<K extends keyof Requests>(type: K, args: Requests[K]['args'], options: CallOptions = {}): Promise<Requests[K]['result']> {
     const id = this.nextId++
-    options.signal?.addEventListener('abort', () => this.worker.postMessage({ id: this.nextId++, type: 'cancel', target: id } satisfies Request))
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, onProgress: options.onProgress })
-      this.worker.postMessage({ id, type, ...args }, options.transfer ?? [])
+      options.signal?.throwIfAborted()
+      const abort = () => this.worker.postMessage({ id: this.nextId++, type: 'cancel', target: id } satisfies Request)
+      const cleanup = () => options.signal?.removeEventListener('abort', abort)
+      this.pending.set(id, { resolve: resolve as (v: unknown) => void, reject, cleanup, onProgress: options.onProgress })
+      options.signal?.addEventListener('abort', abort, { once: true })
+      try {
+        this.worker.postMessage({ id, type, ...args }, options.transfer ?? [])
+      } catch (e) {
+        cleanup()
+        this.pending.delete(id)
+        reject(e)
+      }
     })
   }
 }
