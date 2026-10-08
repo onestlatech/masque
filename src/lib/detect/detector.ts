@@ -9,7 +9,9 @@ export type Backend = 'webgpu' | 'wasm'
 const MODEL_URL = `${import.meta.env.BASE_URL}models/centerface.onnx`
 
 export class Detector {
+  // Keyed by pass size; only the passes of the latest image size are kept.
   private canvases = new Map<string, OffscreenCanvasRenderingContext2D>()
+  private imageSize = ''
 
   private constructor(
     private session: ort.InferenceSession,
@@ -43,6 +45,11 @@ export class Detector {
     tiling: TilingOptions = defaultTiling,
   ): Promise<Detection[]> {
     const found: Detection[] = []
+    const size = `${width}x${height}`
+    if (this.imageSize !== size) {
+      this.canvases.clear()
+      this.imageSize = size
+    }
     for (const { region, inputWidth, inputHeight } of planPasses(width, height, tiling)) {
       const ctx = this.context(inputWidth, inputHeight)
       ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, 0, inputWidth, inputHeight)
