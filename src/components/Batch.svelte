@@ -40,24 +40,34 @@
 
   onMount(() => {
     let stopped = false
+    const controller = new AbortController()
     ;(async () => {
       for (const it of items) {
         if (stopped) return
+        let b: ImageBitmap | undefined
         try {
-          const b = await loadImage(it.file)
-          const found = await worker.call('detect', { image: b, threshold: MIN_THRESHOLD }, { transfer: [b] })
+          b = await loadImage(it.file)
+          if (stopped) return
+          const found = await worker.call('detect', { image: b, threshold: MIN_THRESHOLD }, { transfer: [b], signal: controller.signal })
+          if (stopped) return
           it.faces = found.map(fromDetection)
           it.status = 'ready'
         } catch {
           it.status = 'error'
+        } finally {
+          b?.close()
         }
       }
     })()
-    return () => (stopped = true)
+    return () => {
+      stopped = true
+      controller.abort()
+    }
   })
 
   $effect(() => {
     const file = item.file
+    bitmap = undefined
     let b: ImageBitmap | undefined
     let stale = false
     loadImage(file).then(
@@ -65,7 +75,7 @@
         if (stale) return loaded.close()
         bitmap = b = loaded
       },
-      () => (bitmap = undefined),
+      () => { if (!stale) bitmap = undefined },
     )
     return () => {
       stale = true
