@@ -31,6 +31,7 @@ let detector: Promise<Detector> | undefined
 const videos = new Map<number, Video>()
 const running = new Map<number, AbortController>()
 let nextVideo = 0
+let queue = Promise.resolve()
 
 const getDetector = () => (detector ??= Detector.create())
 
@@ -40,20 +41,17 @@ function video(id: number): Video {
   return v
 }
 
-async function handle(req: Request, signal: AbortSignal): Promise<[unknown, Transferable[]?]> {
+async function handle(req: Exclude<Request, { type: 'cancel' }>, signal: AbortSignal): Promise<[unknown, Transferable[]?]> {
   // In Firefox, demuxing while ONNX Runtime starts its threads stalls the runtime: let it finish first.
-  if (req.type !== 'cancel') await getDetector()
+  if (req.type !== 'close') await getDetector()
+  signal.throwIfAborted()
   const progress = (p: number) => postMessage({ id: req.id, progress: p } satisfies Response)
   switch (req.type) {
     case 'init':
       return [(await getDetector()).backend]
     case 'detect': {
       const { image } = req
-      try {
-        return [await (await getDetector()).detect(image, image.width, image.height, req.threshold)]
-      } finally {
-        image.close()
-      }
+      return [await (await getDetector()).detect(image, image.width, image.height, req.threshold)]
     }
     case 'open': {
       const v = await Video.open(req.file)
@@ -76,21 +74,28 @@ async function handle(req: Request, signal: AbortSignal): Promise<[unknown, Tran
       video(req.video).close()
       videos.delete(req.video)
       return [undefined]
-    case 'cancel':
-      running.get(req.target)?.abort()
-      return [undefined]
   }
 }
 
-addEventListener('message', async ({ data }: MessageEvent<Request>) => {
+addEventListener('message', ({ data }: MessageEvent<Request>) => {
+  if (data.type === 'cancel') {
+    running.get(data.target)?.abort()
+    postMessage({ id: data.id, result: undefined } satisfies Response)
+    return
+  }
   const controller = new AbortController()
   running.set(data.id, controller)
-  try {
-    const [result, transfer = []] = await handle(data, controller.signal)
-    postMessage({ id: data.id, result } satisfies Response, { transfer })
-  } catch (e) {
-    postMessage({ id: data.id, error: e instanceof Error ? e.message : String(e) } satisfies Response)
-  } finally {
-    running.delete(data.id)
-  }
+  // The detector session and video canvases must not be used by overlapping requests.
+  queue = queue.then(async () => {
+    try {
+      controller.signal.throwIfAborted()
+      const [result, transfer = []] = await handle(data, controller.signal)
+      postMessage({ id: data.id, result } satisfies Response, { transfer })
+    } catch (e) {
+      postMessage({ id: data.id, error: e instanceof Error ? e.message : String(e) } satisfies Response)
+    } finally {
+      if (data.type === 'detect') data.image.close()
+      running.delete(data.id)
+    }
+  })
 })
