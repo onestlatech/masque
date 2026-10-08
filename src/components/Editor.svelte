@@ -141,7 +141,7 @@
     <button
       type="button"
       class="remove"
-      style:left="{(f.x2 / bitmap.width) * 100}%"
+      style:left="min({(f.x2 / bitmap.width) * 100}%, 100% - 1.3125rem)"
       style:top="{(f.y1 / bitmap.height) * 100}%"
       aria-label={t('removeMask')}
       onclick={() => remove(f.id)}>×</button
@@ -179,7 +179,8 @@
 
   .remove {
     position: absolute;
-    translate: -50% -50%;
+    /* Mostly outside the box: on a small screen the cross is larger than the face it removes. */
+    translate: -25% -75%;
     width: 1.75rem;
     height: 1.75rem;
     padding: 0;
