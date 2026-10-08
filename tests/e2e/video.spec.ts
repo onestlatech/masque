@@ -7,8 +7,14 @@ const golden: number[][] = JSON.parse(readFileSync(new URL('../fixtures/city.gol
 
 test.setTimeout(180_000)
 
-test('exports a masked video without metadata or sound', async ({ page }) => {
+test('exports a masked video without metadata or sound', async ({ page, browserName }) => {
   await page.goto('/')
+  const storageAvailable = await page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory()
+    await root.getFileHandle('masque-other-tab.mp4', { create: true })
+    return true
+  }).catch(() => false)
+  if (browserName !== 'webkit') expect(storageAvailable).toBe(true)
   await page.locator('input[type=file]').setInputFiles(fixture)
   await expect(page.getByRole('slider', { name: 'Frame' })).toBeVisible({ timeout: 120_000 })
   await expect(page.locator('summary')).toHaveText(/^[1-9]\d* masks$/)
@@ -55,6 +61,16 @@ test('exports a masked video without metadata or sound', async ({ page }) => {
   )
   expect(pixels.length).toBeGreaterThan(10)
   for (const p of pixels) expect(p).toBeLessThan(40)
+  const stored = () => page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory()
+    const files: string[] = []
+    for await (const key of root.keys()) files.push(key)
+    return files.sort()
+  })
+  if (storageAvailable) expect(await stored()).toEqual([expect.stringMatching(/^masque-[0-9a-f]{8}\.mp4$/), 'masque-other-tab.mp4'])
+  await page.getByRole('button', { name: 'Start over' }).click()
+  // Deletion waits for the download grace period.
+  if (storageAvailable) await expect.poll(stored, { timeout: 20_000 }).toEqual(['masque-other-tab.mp4'])
 })
 
 test('scrubs frames and adds a mask spanning the video', async ({ page }) => {

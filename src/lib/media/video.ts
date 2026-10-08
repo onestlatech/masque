@@ -27,7 +27,7 @@ const SPEC_COLOR_VALUES = {
   matrix: ['rgb', 'bt709', 'bt470bg', 'smpte170m', 'bt2020-ncl'],
 } satisfies Record<'primaries' | 'transfer' | 'matrix', string[]>
 
-const colorSpace = Object.getOwnPropertyDescriptor(VideoFrame.prototype, 'colorSpace')
+const colorSpace = typeof VideoFrame === 'undefined' ? undefined : Object.getOwnPropertyDescriptor(VideoFrame.prototype, 'colorSpace')
 if (colorSpace?.get) {
   const get = colorSpace.get
   Object.defineProperty(VideoFrame.prototype, 'colorSpace', {
@@ -62,10 +62,14 @@ export interface Analysis {
 
 export type Progress = (fraction: number) => void
 
+/** How long a downloaded export outlives its replacement or "Start over": the browser may still be saving it. */
+const DOWNLOAD_GRACE = 10_000
+
 /** All coordinates are in display space: rotation metadata is applied before detection and masking. */
 export class Video {
   private sink: VideoSampleSink
   private canvas: OffscreenCanvasRenderingContext2D
+  private exported?: { root: FileSystemDirectoryHandle; name: string }
 
   private constructor(
     private file: Blob,
@@ -140,93 +144,147 @@ export class Video {
     onProgress: Progress,
     signal: AbortSignal,
   ): Promise<File> {
-    // A fresh Input: Conversion takes ownership and disposes it.
+    signal.throwIfAborted()
+    this.releaseExport()
     const input = new Input({ source: new BlobSource(this.file), formats: ALL_FORMATS })
     const name = outputName('video/mp4')
-    const opfs = await openOpfs(name).catch(() => undefined)
-    const memory = new BufferTarget()
-    const output = new Output({
-      format: new Mp4OutputFormat(),
-      target: opfs
-        ? new StreamTarget(new WritableStream<StreamTargetChunk>({ write: (c) => void opfs.write(c.data, { at: c.position }) }))
-        : memory,
-    })
-
-    const video = await input.getPrimaryVideoTrack()
-    if (!video) throw new Error('error.noVideo')
-    const audio = discardAudio ? null : await input.getPrimaryAudioTrack()
-    const start = Math.max(0, await input.getFirstTimestamp(audio ? [video, audio] : [video]))
-    const ctx = this.canvas
-    const conversion = await Conversion.init({
-      input,
-      output,
-      tracks: 'primary',
-      trim: { start },
-      // Drops title, GPS location, device and date tags.
-      tags: {},
-      showWarnings: false,
-      video: {
-        forceTranscode: true,
-        allowTransformationMetadata: false,
-        quality: QUALITY_HIGH,
-        processedWidth: this.info.width,
-        processedHeight: this.info.height,
-        process: (sample) => {
-          ctx.clearRect(0, 0, this.info.width, this.info.height)
-          sample.draw(ctx, 0, 0)
-          // Conversion rebases timestamps; masks refer to the source timeline.
-          applyMasks(ctx, boxesAt(tracks, nearest(timestamps, sample.timestamp + start)), options)
-          return new VideoSample(
-            new VideoFrame(ctx.canvas, { timestamp: sample.microsecondTimestamp, duration: sample.microsecondDuration }),
-          )
-        },
-      },
-      audio: discardAudio ? { discard: true } : undefined,
-    })
-    if (!conversion.isValid) throw new Error('error.cannotEncode')
-    conversion.onProgress = onProgress
-    signal.addEventListener('abort', () => void conversion.cancel())
-
-    if (!opfs) {
-      await conversion.execute()
-      const bytes = new Uint8Array(memory.buffer!)
-      const moov = findBox((at, length) => bytes.subarray(at, at + length), bytes.length, 'moov')
-      if (moov) zeroTimes(bytes, moov.at, moov.at + moov.size)
-      return new File([bytes], name, { type: 'video/mp4' })
-    }
+    let opfs: FileSystemSyncAccessHandle | undefined
+    let conversion: Conversion | undefined
+    let output: Output | undefined
+    let cancellation: Promise<void> | undefined
+    let complete = false
+    const cancel = () => { cancellation ??= conversion!.cancel() }
 
     try {
+      const storage = await openOpfs(name).catch(() => undefined)
+      if (storage) {
+        opfs = storage.access
+        this.exported = { root: storage.root, name }
+      }
+      const memory = new BufferTarget()
+      const write = (data: Uint8Array, at: number) => {
+        if (opfs!.write(data, { at }) !== data.length) throw new Error('Incomplete video write')
+      }
+      output = new Output({
+        format: new Mp4OutputFormat(),
+        target: opfs
+          ? new StreamTarget(new WritableStream<StreamTargetChunk>({ write: (c) => write(c.data, c.position) }))
+          : memory,
+      })
+      const video = await input.getPrimaryVideoTrack()
+      if (!video) throw new Error('error.noVideo')
+      const audio = discardAudio ? null : await input.getPrimaryAudioTrack()
+      const start = Math.max(0, await input.getFirstTimestamp(audio ? [video, audio] : [video]))
+      const ctx = this.canvas
+      conversion = await Conversion.init({
+        input,
+        output,
+        tracks: 'primary',
+        trim: { start },
+        tags: {},
+        showWarnings: false,
+        video: {
+          forceTranscode: true,
+          allowTransformationMetadata: false,
+          quality: QUALITY_HIGH,
+          processedWidth: this.info.width,
+          processedHeight: this.info.height,
+          process: (sample) => {
+            ctx.clearRect(0, 0, this.info.width, this.info.height)
+            sample.draw(ctx, 0, 0)
+            // Conversion rebases timestamps; masks refer to the source timeline.
+            applyMasks(ctx, boxesAt(tracks, nearest(timestamps, sample.timestamp + start)), options)
+            return new VideoSample(
+              new VideoFrame(ctx.canvas, { timestamp: sample.microsecondTimestamp, duration: sample.microsecondDuration }),
+            )
+          },
+        },
+        audio: discardAudio ? { discard: true } : undefined,
+      })
+      if (!conversion.isValid || !conversion.utilizedTracks.includes(video)) throw new Error('error.cannotEncode')
+      conversion.onProgress = onProgress
+      signal.addEventListener('abort', cancel, { once: true })
+      signal.throwIfAborted()
       await conversion.execute()
+      signal.throwIfAborted()
+
+      if (!opfs) {
+        const bytes = new Uint8Array(memory.buffer!)
+        const moov = findBox((at, length) => bytes.subarray(at, at + length), bytes.length, 'moov')
+        if (!moov) throw new Error('Missing video metadata')
+        zeroTimes(bytes, moov.at, moov.at + moov.size)
+        complete = true
+        return new File([bytes], name, { type: 'video/mp4' })
+      }
+
       const read = (at: number, length: number) => {
-        const b = new Uint8Array(length)
-        opfs.read(b, { at })
-        return b
+        const bytes = new Uint8Array(length)
+        if (opfs!.read(bytes, { at }) !== length) throw new Error('Incomplete video read')
+        return bytes
       }
       const moov = findBox(read, opfs.getSize(), 'moov')
-      if (moov) {
-        const bytes = read(moov.at, moov.size)
-        zeroTimes(bytes)
-        opfs.write(bytes, { at: moov.at })
-      }
+      if (!moov) throw new Error('Missing video metadata')
+      const bytes = read(moov.at, moov.size)
+      zeroTimes(bytes)
+      write(bytes, moov.at)
       opfs.flush()
-    } finally {
       opfs.close()
+      opfs = undefined
+      const file = await (await storage!.root.getFileHandle(name)).getFile()
+      complete = true
+      return file
+    } finally {
+      signal.removeEventListener('abort', cancel)
+      try {
+        if (cancellation) await cancellation
+        else if (!complete && output?.state !== 'canceled') await conversion?.cancel()
+        // Conversion can start output cancellation without awaiting its resource cleanup.
+        if (!complete && output && output.state !== 'finalized') await output.cancel()
+      } finally {
+        input.dispose()
+        opfs?.close()
+        if (!complete) await this.removeExport()
+      }
     }
-    const root = await navigator.storage.getDirectory()
-    return (await root.getFileHandle(name)).getFile()
+  }
+
+  private async removeExport() {
+    const exported = this.exported
+    this.exported = undefined
+    if (exported) await removeEntry(exported.root, exported.name)
+  }
+
+  private releaseExport() {
+    const exported = this.exported
+    this.exported = undefined
+    if (exported) setTimeout(() => removeEntry(exported.root, exported.name).catch(console.error), DOWNLOAD_GRACE)
   }
 
   close() {
     this.input.dispose()
+    this.canvas.canvas.width = this.canvas.canvas.height = 1
+    this.releaseExport()
   }
 }
 
-async function openOpfs(name: string): Promise<FileSystemSyncAccessHandle> {
+async function removeEntry(root: FileSystemDirectoryHandle, name: string) {
+  try {
+    await root.removeEntry(name)
+  } catch (e) {
+    // Already gone, for instance after the user cleared site data.
+    if (!(e instanceof DOMException && e.name === 'NotFoundError')) throw e
+  }
+}
+
+async function openOpfs(name: string) {
   const root = await navigator.storage.getDirectory()
-  // Only one export is kept: earlier ones are already downloaded.
-  for await (const key of root.keys()) if (key.startsWith('masque-')) await root.removeEntry(key)
   const handle = await root.getFileHandle(name, { create: true })
-  return handle.createSyncAccessHandle()
+  try {
+    return { root, access: await handle.createSyncAccessHandle() }
+  } catch (e) {
+    await root.removeEntry(name)
+    throw e
+  }
 }
 
 /** Index of the timestamp closest to `t`. */
