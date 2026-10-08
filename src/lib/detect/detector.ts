@@ -8,33 +8,33 @@ export type Backend = 'webgpu' | 'wasm'
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/centerface.onnx`
 
+const createSession = (model: Uint8Array, backend: Backend) =>
+  ort.InferenceSession.create(model, { executionProviders: [backend], graphOptimizationLevel: 'all' })
+
+class GpuError extends Error {}
+
 export class Detector {
   // Keyed by pass size; only the passes of the latest image size are kept.
   private canvases = new Map<string, OffscreenCanvasRenderingContext2D>()
   private imageSize = ''
 
   private constructor(
+    private model: Uint8Array,
     private session: ort.InferenceSession,
-    readonly backend: Backend,
+    public backend: Backend,
+    private gpu?: GPUDevice,
   ) {}
 
   static async create(): Promise<Detector> {
     ort.env.wasm.wasmPaths = { mjs: new URL(wasmGlue, location.href), wasm: new URL(wasmBinary, location.href) }
     const response = await fetch(MODEL_URL, { integrity: __MODEL_INTEGRITY__ })
     const model = new Uint8Array(await response.arrayBuffer())
-
-    for (const backend of ['webgpu', 'wasm'] as const) {
-      try {
-        const session = await ort.InferenceSession.create(model, {
-          executionProviders: [backend],
-          graphOptimizationLevel: 'all',
-        })
-        return new Detector(session, backend)
-      } catch (e) {
-        if (backend === 'wasm') throw e
-      }
+    try {
+      const session = await createSession(model, 'webgpu')
+      return new Detector(model, session, 'webgpu', await ort.env.webgpu.device)
+    } catch {
+      return new Detector(model, await createSession(model, 'wasm'), 'wasm')
     }
-    throw new Error('unreachable')
   }
 
   async detect(
@@ -44,6 +44,20 @@ export class Detector {
     threshold: number,
     tiling: TilingOptions = defaultTiling,
   ): Promise<Detection[]> {
+    try {
+      return await this.passes(source, width, height, threshold, tiling)
+    } catch (e) {
+      if (!(e instanceof GpuError)) throw e
+      // Phone GPUs reject the buffers of large inputs, and ONNX Runtime would return no faces instead of failing.
+      await this.session.release()
+      this.session = await createSession(this.model, 'wasm')
+      this.backend = 'wasm'
+      this.gpu = undefined
+      return this.passes(source, width, height, threshold, tiling)
+    }
+  }
+
+  private async passes(source: CanvasImageSource, width: number, height: number, threshold: number, tiling: TilingOptions) {
     const found: Detection[] = []
     const size = `${width}x${height}`
     if (this.imageSize !== size) {
@@ -57,7 +71,7 @@ export class Detector {
       const input = new ort.Tensor('float32', toTensor(data, inputWidth, inputHeight), [1, 3, inputHeight, inputWidth])
       let out: ort.InferenceSession.ReturnType | undefined
       try {
-        out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
+        out = await this.run(input)
         const h = inputHeight / 4
         const w = inputWidth / 4
         const sx = region.width / inputWidth
@@ -77,6 +91,23 @@ export class Detector {
       }
     }
     return nms(found, NMS_THRESHOLD)
+  }
+
+  private async run(input: ort.Tensor): Promise<ort.InferenceSession.ReturnType> {
+    const gpu = this.gpu
+    gpu?.pushErrorScope('validation')
+    gpu?.pushErrorScope('out-of-memory')
+    let out: ort.InferenceSession.ReturnType | undefined
+    try {
+      out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
+      return out
+    } finally {
+      const error = gpu && (await Promise.all([gpu.popErrorScope(), gpu.popErrorScope()])).find(Boolean)
+      if (error) {
+        if (out) for (const t of Object.values(out)) t.dispose()
+        throw new GpuError(error.message)
+      }
+    }
   }
 
   private context(width: number, height: number): OffscreenCanvasRenderingContext2D {
