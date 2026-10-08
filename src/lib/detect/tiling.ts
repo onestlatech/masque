@@ -22,7 +22,8 @@ export interface TilingOptions {
   overlap: number
 }
 
-export const defaultTiling: TilingOptions = { direct: 1920, tile: 1280, overlap: 160 }
+// ONNX Runtime keeps about 420 bytes of GPU memory per input pixel, and iOS counts it against the page's memory limit.
+export const defaultTiling: TilingOptions = { direct: 1024, tile: 640, overlap: 160 }
 
 function spans(length: number, tile: number, overlap: number): [start: number, size: number][] {
   if (length <= tile) return [[0, length]]

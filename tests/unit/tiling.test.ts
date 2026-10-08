@@ -11,9 +11,9 @@ test('small images run in one pass', () => {
 
 test('large images get a downscaled pass then same-shape tiles', () => {
   const passes = planPasses(4000, 3000)
-  expect(passes[0]).toMatchObject({ region: { x: 0, y: 0, width: 4000, height: 3000 }, inputWidth: 1280, inputHeight: 960 })
-  expect(tiles(passes)).toHaveLength(12)
-  for (const p of passes.slice(1)) expect(p).toMatchObject({ inputWidth: 1280, inputHeight: 1280 })
+  expect(passes[0]).toMatchObject({ region: { x: 0, y: 0, width: 4000, height: 3000 }, inputWidth: 640, inputHeight: 480 })
+  expect(tiles(passes)).toHaveLength(48)
+  for (const p of passes.slice(1)) expect(p).toMatchObject({ inputWidth: 640, inputHeight: 640 })
 })
 
 test('tiles cover the image and overlap enough for any small face', () => {
@@ -21,7 +21,7 @@ test('tiles cover the image and overlap enough for any small face', () => {
   for (const [width, height] of [
     [4000, 3000],
     [6000, 1000],
-    [1921, 1921],
+    [1025, 1025],
   ]) {
     const regions = tiles(planPasses(width, height))
     for (const axis of ['x', 'y'] as const) {
