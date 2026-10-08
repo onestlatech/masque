@@ -26,6 +26,10 @@ afterEach(() => vi.unstubAllGlobals())
 
 const image = () => ({ width: 32, height: 32, close: vi.fn() }) as unknown as ImageBitmap
 
+test('uncaught worker errors reach the client failure handler', () => {
+  expect(events.dispatchEvent(new Event('error', { cancelable: true }))).toBe(true)
+})
+
 test('requests run serially while cancellation bypasses the queue', async () => {
   let finish!: (value: never[]) => void
   detect.mockImplementationOnce(() => new Promise((resolve) => { finish = resolve }))

@@ -14,6 +14,16 @@ class WorkerMock extends EventTarget {
 beforeEach(() => vi.stubGlobal('Worker', WorkerMock))
 afterEach(() => vi.unstubAllGlobals())
 
+test('worker crashes reject pending and future requests', async () => {
+  const engine = new Engine()
+  const pending = engine.call('init', {})
+  const rejection = expect(pending).rejects.toThrow('worker stopped')
+  WorkerMock.current.dispatchEvent(new Event('error'))
+  await rejection
+  await expect(engine.call('init', {})).rejects.toThrow('worker stopped')
+  expect(WorkerMock.current.terminate).toHaveBeenCalledOnce()
+})
+
 test('already cancelled work never reaches the worker', async () => {
   const engine = new Engine()
   await expect(engine.call('init', {}, { signal: AbortSignal.abort() })).rejects.toThrow()
