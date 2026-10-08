@@ -65,7 +65,7 @@ test('transparent photos do not inherit detections from a previous photo', async
     blank.getContext('2d')
     return [...new Uint8Array(await (await blank.convertToBlob()).arrayBuffer())]
   })
-  await page.getByRole('button', { name: 'Start over' }).click()
+  await page.getByRole('button', { name: 'Open another file' }).click()
   await page.locator('input[type=file]').setInputFiles({ name: 'transparent.png', mimeType: 'image/png', buffer: Buffer.from(png) })
   await expect(page.getByRole('button', { name: 'Download', exact: true })).toBeEnabled({ timeout: 60_000 })
   await expect(page.locator('summary')).toHaveText('0 masks')

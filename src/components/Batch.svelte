@@ -146,7 +146,7 @@
     <button type="button" class="primary" onclick={save} disabled={done < items.length || exporting}>
       {t('downloadAll', items.filter((i) => i.status === 'ready').length)}
     </button>
-    <button type="button" onclick={onclose}>{t('startOver')}</button>
+    <button type="button" onclick={onclose}>{t('openAnother')}</button>
   </aside>
 </div>
 

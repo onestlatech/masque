@@ -179,7 +179,7 @@
       {t('removeSound')}
     </label>
     <button type="button" class="primary" onclick={save} disabled={!analysis || !!task}>{t('download')}</button>
-    <button type="button" onclick={onclose}>{t('startOver')}</button>
+    <button type="button" onclick={onclose}>{t('openAnother')}</button>
   </aside>
 </div>
 

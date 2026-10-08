@@ -102,6 +102,6 @@
   <aside>
     <Settings bind:options bind:threshold />
     <button type="button" class="primary" onclick={save} disabled={!bitmap || detecting || exporting || (detectionFailed && !shown.length)}>{t('download')}</button>
-    <button type="button" onclick={onclose}>{t('startOver')}</button>
+    <button type="button" onclick={onclose}>{t('openAnother')}</button>
   </aside>
 </div>

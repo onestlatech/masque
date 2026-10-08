@@ -62,7 +62,7 @@ export interface Analysis {
 
 export type Progress = (fraction: number) => void
 
-/** How long a downloaded export outlives its replacement or "Start over": the browser may still be saving it. */
+/** How long a downloaded export outlives its replacement or "Open another file": the browser may still be saving it. */
 const DOWNLOAD_GRACE = 10_000
 
 /** All coordinates are in display space: rotation metadata is applied before detection and masking. */

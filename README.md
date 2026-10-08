@@ -14,7 +14,7 @@ Masque is created by [onestla.tech](https://onestla.tech) and [L'Offensive](http
 
 - No backend, no analytics, no third-party requests. A strict Content Security Policy (`connect-src 'self'`) blocks the page from sending data anywhere else.
 - Output files carry no metadata: no EXIF, GPS, or device identifiers in photos; no tags or creation dates in videos. Downloads get random or numbered names, never the original ones.
-- Video exports use temporary browser storage where available. “Start over” deletes the temporary export a few seconds later, once the download has had time to finish. Closing the tab or a crash can leave it behind; clear this site's data to remove it.
+- Video exports use temporary browser storage where available. “Open another file” deletes the temporary export a few seconds later, once the download has had time to finish. Closing the tab or a crash can leave it behind; clear this site's data to remove it.
 - Hiding faces does not hide everything: clothing, tattoos, banners, gait, and landmarks can still identify people. Your phone may also have uploaded the originals to a cloud backup.
 
 ## Development

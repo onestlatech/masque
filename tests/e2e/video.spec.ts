@@ -68,7 +68,7 @@ test('exports a masked video without metadata or sound', async ({ page, browserN
     return files.sort()
   })
   if (storageAvailable) expect(await stored()).toEqual([expect.stringMatching(/^masque-[0-9a-f]{8}\.mp4$/), 'masque-other-tab.mp4'])
-  await page.getByRole('button', { name: 'Start over' }).click()
+  await page.getByRole('button', { name: 'Open another file' }).click()
   // Deletion waits for the download grace period.
   if (storageAvailable) await expect.poll(stored, { timeout: 20_000 }).toEqual(['masque-other-tab.mp4'])
 })
