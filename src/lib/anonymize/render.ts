@@ -20,16 +20,19 @@ export interface Box {
 
 type Context = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
 
-/** deface's scale_bb, clamped to the image. */
-export function maskRect(b: Box, maskScale: number, width: number, height: number): Rect {
+/** deface's scale_bb, before clamping to the image. */
+function scaleBox(b: Box, maskScale: number): Box {
   const s = maskScale - 1
   const w = b.x2 - b.x1
   const h = b.y2 - b.y1
-  const x1 = Math.max(0, Math.round(b.x1 - w * s))
-  const y1 = Math.max(0, Math.round(b.y1 - h * s))
-  const x2 = Math.min(width, Math.round(b.x2 + w * s))
-  const y2 = Math.min(height, Math.round(b.y2 + h * s))
-  return { x: x1, y: y1, width: Math.max(0, x2 - x1), height: Math.max(0, y2 - y1) }
+  return { x1: Math.round(b.x1 - w * s), y1: Math.round(b.y1 - h * s), x2: Math.round(b.x2 + w * s), y2: Math.round(b.y2 + h * s) }
+}
+
+export function maskRect(b: Box, maskScale: number, width: number, height: number): Rect {
+  const m = scaleBox(b, maskScale)
+  const x1 = Math.max(0, m.x1)
+  const y1 = Math.max(0, m.y1)
+  return { x: x1, y: y1, width: Math.max(0, Math.min(width, m.x2) - x1), height: Math.max(0, Math.min(height, m.y2) - y1) }
 }
 
 /** Number of samples across the longest side. */
@@ -46,8 +49,11 @@ export function applyMasks(ctx: Context, boxes: Box[], options: MaskOptions, sou
 
     ctx.save()
     ctx.beginPath()
-    if (options.ellipse) ctx.ellipse(r.x + r.width / 2, r.y + r.height / 2, r.width / 2, r.height / 2, 0, 0, 2 * Math.PI)
-    else ctx.rect(r.x, r.y, r.width, r.height)
+    if (options.ellipse) {
+      // Fitted to the clamped rectangle, the oval would shrink and uncover a face on the image edge.
+      const e = scaleBox(b, options.maskScale)
+      ctx.ellipse((e.x1 + e.x2) / 2, (e.y1 + e.y2) / 2, (e.x2 - e.x1) / 2, (e.y2 - e.y1) / 2, 0, 0, 2 * Math.PI)
+    } else ctx.rect(r.x, r.y, r.width, r.height)
     ctx.clip()
 
     if (options.mode === 'solid') {
