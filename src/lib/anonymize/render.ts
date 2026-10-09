@@ -37,7 +37,8 @@ const SAMPLES: Record<Exclude<Mode, 'solid'>, number> = { mosaic: 6, blur: 3 }
 
 let scratch: OffscreenCanvasRenderingContext2D | undefined
 
-export function applyMasks(ctx: Context, boxes: Box[], options: MaskOptions) {
+/** `source` holds the unmasked pixels: sampling the canvas being drawn copies all of it for every mask in WebKit. */
+export function applyMasks(ctx: Context, boxes: Box[], options: MaskOptions, source: CanvasImageSource = ctx.canvas) {
   const { width, height } = ctx.canvas
   for (const b of boxes) {
     const r = maskRect(b, options.maskScale, width, height)
@@ -61,7 +62,7 @@ export function applyMasks(ctx: Context, boxes: Box[], options: MaskOptions) {
       scratch.canvas.width = sw
       scratch.canvas.height = sh
       scratch.imageSmoothingQuality = 'high'
-      scratch.drawImage(ctx.canvas, r.x, r.y, r.width, r.height, 0, 0, sw, sh)
+      scratch.drawImage(source, r.x, r.y, r.width, r.height, 0, 0, sw, sh)
       ctx.imageSmoothingEnabled = options.mode === 'blur'
       ctx.clearRect(r.x, r.y, r.width, r.height)
       ctx.drawImage(scratch.canvas, 0, 0, sw, sh, r.x, r.y, r.width, r.height)

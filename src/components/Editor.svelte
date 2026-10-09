@@ -36,7 +36,7 @@
     canvas.height = bitmap.height
     const ctx = canvas.getContext('2d')!
     ctx.drawImage(bitmap, 0, 0)
-    applyMasks(ctx, faces, options)
+    applyMasks(ctx, faces, options, bitmap)
 
     const px = pixelRatio()
     ctx.lineWidth = 2 * px

@@ -25,7 +25,7 @@ export async function exportImage(bitmap: ImageBitmap, boxes: Box[], options: Ma
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
   const ctx = canvas.getContext('2d')!
   ctx.drawImage(bitmap, 0, 0)
-  applyMasks(ctx, boxes, options)
+  applyMasks(ctx, boxes, options, bitmap)
   const bytes = new Uint8Array(await (await canvas.convertToBlob({ type, quality: 0.92 })).arrayBuffer())
   return new Blob([type === 'image/png' ? stripPng(bytes) : stripJpeg(bytes)], { type })
 }
