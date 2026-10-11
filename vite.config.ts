@@ -1,7 +1,9 @@
 /// <reference types="vitest/config" />
 import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { promisify } from 'node:util'
+import { brotliCompress, constants } from 'node:zlib'
 import { defaultClientConditions, defineConfig, transformWithOxc, type Plugin, type ResolvedConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
@@ -30,6 +32,12 @@ function security(): Plugin {
         'RewriteCond %{HTTPS} off',
         'RewriteCond %{HTTP:X-Forwarded-Proto} !https',
         'RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]',
+        // Apache often lacks mod_brotli: serve the files precompressed by masque:brotli.
+        'AddEncoding br .br',
+        'RewriteCond %{HTTP:Accept-Encoding} \\bbr\\b',
+        'RewriteCond %{REQUEST_FILENAME}.br -f',
+        'RewriteRule ^(.+)$ $1.br [L]',
+        'Header merge Vary Accept-Encoding',
         ...headers.map(([k, v]) => `Header always set ${k} "${v}"`),
         '<IfModule mod_deflate.c>',
         '  AddOutputFilterByType DEFLATE application/wasm text/html text/css text/javascript application/javascript application/manifest+json image/svg+xml',
@@ -70,10 +78,44 @@ function serviceWorker(): Plugin {
   }
 }
 
+// Runs last: the service worker must not precache the .br files.
+function brotli(): Plugin {
+  let outDir: string
+  const compress = promisify(brotliCompress)
+  return {
+    name: 'masque:brotli',
+    apply: 'build',
+    configResolved(c) {
+      outDir = c.build.outDir
+    },
+    closeBundle: {
+      order: 'post',
+      sequential: true,
+      async handler() {
+        const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
+          .filter((f) => f.isFile() && /\.(css|m?js|wasm|onnx)$/.test(f.name))
+          .map((f) => join(f.parentPath, f.name))
+          .filter((f) => statSync(f).size >= 10_240)
+        await Promise.all(
+          files.map(async (f) => {
+            const data = readFileSync(f)
+            const params = {
+              [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
+              [constants.BROTLI_PARAM_LGWIN]: constants.BROTLI_MAX_WINDOW_BITS,
+              [constants.BROTLI_PARAM_SIZE_HINT]: data.length,
+            }
+            writeFileSync(`${f}.br`, await compress(data, { params }))
+          }),
+        )
+      },
+    },
+  }
+}
+
 const modelSha256 = readFileSync('public/models/SHA256SUMS', 'utf8').split(' ')[0]
 
 export default defineConfig({
-  plugins: [svelte(), security(), serviceWorker()],
+  plugins: [svelte(), security(), serviceWorker(), brotli()],
   define: {
     __MODEL_INTEGRITY__: JSON.stringify(`sha256-${Buffer.from(modelSha256, 'hex').toString('base64')}`),
   },
