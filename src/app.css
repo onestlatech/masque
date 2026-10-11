@@ -10,7 +10,7 @@
   --on-accent: #fff;
   --tint: rgb(255 217 180 / 0.4);
   --danger: #b91c1c;
-  font-family: 'IBM Plex Mono', monospace;
+  font-family: "IBM Plex Mono", monospace;
   color-scheme: light dark;
   color: var(--fg);
   background: var(--page);

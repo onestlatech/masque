@@ -1,22 +1,31 @@
-import * as ort from 'onnxruntime-web'
-import wasmGlue from 'onnxruntime-web/ort-wasm-simd-threaded.jsep.mjs?url'
-import wasmBinary from 'onnxruntime-web/ort-wasm-simd-threaded.jsep.wasm?url'
-import { decode, nms, NMS_THRESHOLD, toTensor, type Detection } from './centerface.ts'
-import { defaultTiling, planPasses, type TilingOptions } from './tiling.ts'
+import * as ort from "onnxruntime-web";
+import wasmGlue from "onnxruntime-web/ort-wasm-simd-threaded.jsep.mjs?url";
+import wasmBinary from "onnxruntime-web/ort-wasm-simd-threaded.jsep.wasm?url";
+import {
+  decode,
+  nms,
+  NMS_THRESHOLD,
+  toTensor,
+  type Detection,
+} from "./centerface.ts";
+import { defaultTiling, planPasses, type TilingOptions } from "./tiling.ts";
 
-export type Backend = 'webgpu' | 'wasm'
+export type Backend = "webgpu" | "wasm";
 
-const MODEL_URL = `${import.meta.env.BASE_URL}models/centerface.onnx`
+const MODEL_URL = `${import.meta.env.BASE_URL}models/centerface.onnx`;
 
 const createSession = (model: Uint8Array, backend: Backend) =>
-  ort.InferenceSession.create(model, { executionProviders: [backend], graphOptimizationLevel: 'all' })
+  ort.InferenceSession.create(model, {
+    executionProviders: [backend],
+    graphOptimizationLevel: "all",
+  });
 
 class GpuError extends Error {}
 
 export class Detector {
   // Keyed by pass size; only the passes of the latest image size are kept.
-  private canvases = new Map<string, OffscreenCanvasRenderingContext2D>()
-  private imageSize = ''
+  private canvases = new Map<string, OffscreenCanvasRenderingContext2D>();
+  private imageSize = "";
 
   private constructor(
     private model: Uint8Array,
@@ -26,14 +35,22 @@ export class Detector {
   ) {}
 
   static async create(): Promise<Detector> {
-    ort.env.wasm.wasmPaths = { mjs: new URL(wasmGlue, location.href), wasm: new URL(wasmBinary, location.href) }
-    const response = await fetch(MODEL_URL, { integrity: __MODEL_INTEGRITY__ })
-    const model = new Uint8Array(await response.arrayBuffer())
+    ort.env.wasm.wasmPaths = {
+      mjs: new URL(wasmGlue, location.href),
+      wasm: new URL(wasmBinary, location.href),
+    };
+    const response = await fetch(MODEL_URL, { integrity: __MODEL_INTEGRITY__ });
+    const model = new Uint8Array(await response.arrayBuffer());
     try {
-      const session = await createSession(model, 'webgpu')
-      return new Detector(model, session, 'webgpu', await ort.env.webgpu.device)
+      const session = await createSession(model, "webgpu");
+      return new Detector(
+        model,
+        session,
+        "webgpu",
+        await ort.env.webgpu.device,
+      );
     } catch {
-      return new Detector(model, await createSession(model, 'wasm'), 'wasm')
+      return new Detector(model, await createSession(model, "wasm"), "wasm");
     }
   }
 
@@ -45,79 +62,121 @@ export class Detector {
     tiling: TilingOptions = defaultTiling,
   ): Promise<Detection[]> {
     try {
-      return await this.passes(source, width, height, threshold, tiling)
+      return await this.passes(source, width, height, threshold, tiling);
     } catch (e) {
-      if (!(e instanceof GpuError)) throw e
+      if (!(e instanceof GpuError)) throw e;
       // Phone GPUs reject the buffers of large inputs, and ONNX Runtime would return no faces instead of failing.
-      await this.session.release()
-      this.session = await createSession(this.model, 'wasm')
-      this.backend = 'wasm'
-      this.gpu = undefined
-      return this.passes(source, width, height, threshold, tiling)
+      await this.session.release();
+      this.session = await createSession(this.model, "wasm");
+      this.backend = "wasm";
+      this.gpu = undefined;
+      return this.passes(source, width, height, threshold, tiling);
     }
   }
 
-  private async passes(source: CanvasImageSource, width: number, height: number, threshold: number, tiling: TilingOptions) {
-    const found: Detection[] = []
-    const size = `${width}x${height}`
+  private async passes(
+    source: CanvasImageSource,
+    width: number,
+    height: number,
+    threshold: number,
+    tiling: TilingOptions,
+  ) {
+    const found: Detection[] = [];
+    const size = `${width}x${height}`;
     if (this.imageSize !== size) {
-      this.canvases.clear()
-      this.imageSize = size
+      this.canvases.clear();
+      this.imageSize = size;
     }
-    for (const { region, inputWidth, inputHeight } of planPasses(width, height, tiling)) {
-      const ctx = this.context(inputWidth, inputHeight)
-      ctx.drawImage(source, region.x, region.y, region.width, region.height, 0, 0, inputWidth, inputHeight)
-      const { data } = ctx.getImageData(0, 0, inputWidth, inputHeight)
-      const input = new ort.Tensor('float32', toTensor(data, inputWidth, inputHeight), [1, 3, inputHeight, inputWidth])
-      let out: ort.InferenceSession.ReturnType | undefined
+    for (const { region, inputWidth, inputHeight } of planPasses(
+      width,
+      height,
+      tiling,
+    )) {
+      const ctx = this.context(inputWidth, inputHeight);
+      ctx.drawImage(
+        source,
+        region.x,
+        region.y,
+        region.width,
+        region.height,
+        0,
+        0,
+        inputWidth,
+        inputHeight,
+      );
+      const { data } = ctx.getImageData(0, 0, inputWidth, inputHeight);
+      const input = new ort.Tensor(
+        "float32",
+        toTensor(data, inputWidth, inputHeight),
+        [1, 3, inputHeight, inputWidth],
+      );
+      let out: ort.InferenceSession.ReturnType | undefined;
       try {
-        out = await this.run(input)
-        const h = inputHeight / 4
-        const w = inputWidth / 4
-        const sx = region.width / inputWidth
-        const sy = region.height / inputHeight
-        for (const d of decode(out['537'].data as Float32Array, out['538'].data as Float32Array, out['539'].data as Float32Array, h, w, threshold)) {
+        out = await this.run(input);
+        const h = inputHeight / 4;
+        const w = inputWidth / 4;
+        const sx = region.width / inputWidth;
+        const sy = region.height / inputHeight;
+        for (const d of decode(
+          out["537"].data as Float32Array,
+          out["538"].data as Float32Array,
+          out["539"].data as Float32Array,
+          h,
+          w,
+          threshold,
+        )) {
           found.push({
             x1: region.x + d.x1 * sx,
             y1: region.y + d.y1 * sy,
             x2: region.x + d.x2 * sx,
             y2: region.y + d.y2 * sy,
             score: d.score,
-          })
+          });
         }
       } finally {
-        input.dispose()
-        if (out) for (const t of Object.values(out)) t.dispose()
+        input.dispose();
+        if (out) for (const t of Object.values(out)) t.dispose();
       }
     }
-    return nms(found, NMS_THRESHOLD)
+    return nms(found, NMS_THRESHOLD);
   }
 
-  private async run(input: ort.Tensor): Promise<ort.InferenceSession.ReturnType> {
-    const gpu = this.gpu
-    gpu?.pushErrorScope('validation')
-    gpu?.pushErrorScope('out-of-memory')
-    let out: ort.InferenceSession.ReturnType | undefined
+  private async run(
+    input: ort.Tensor,
+  ): Promise<ort.InferenceSession.ReturnType> {
+    const gpu = this.gpu;
+    gpu?.pushErrorScope("validation");
+    gpu?.pushErrorScope("out-of-memory");
+    let out: ort.InferenceSession.ReturnType | undefined;
     try {
-      out = await this.session.run({ 'input.1': input }, ['537', '538', '539'])
-      return out
+      out = await this.session.run({ "input.1": input }, ["537", "538", "539"]);
+      return out;
     } finally {
-      const error = gpu && (await Promise.all([gpu.popErrorScope(), gpu.popErrorScope()])).find(Boolean)
+      const error =
+        gpu &&
+        (await Promise.all([gpu.popErrorScope(), gpu.popErrorScope()])).find(
+          Boolean,
+        );
       if (error) {
-        if (out) for (const t of Object.values(out)) t.dispose()
-        throw new GpuError(error.message)
+        if (out) for (const t of Object.values(out)) t.dispose();
+        throw new GpuError(error.message);
       }
     }
   }
 
-  private context(width: number, height: number): OffscreenCanvasRenderingContext2D {
-    const key = `${width}x${height}`
-    let ctx = this.canvases.get(key)
+  private context(
+    width: number,
+    height: number,
+  ): OffscreenCanvasRenderingContext2D {
+    const key = `${width}x${height}`;
+    let ctx = this.canvases.get(key);
     if (!ctx) {
-      ctx = new OffscreenCanvas(width, height).getContext('2d', { willReadFrequently: true })!
-      this.canvases.set(key, ctx)
+      ctx = new OffscreenCanvas(width, height).getContext("2d", {
+        willReadFrequently: true,
+      })!;
+      this.canvases.set(key, ctx);
     }
-    ctx.clearRect(0, 0, width, height)
-    return ctx
+    ctx.clearRect(0, 0, width, height);
+    return ctx;
   }
 }

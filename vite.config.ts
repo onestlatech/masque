@@ -1,131 +1,168 @@
 /// <reference types="vitest/config" />
-import { createHash } from 'node:crypto'
-import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative } from 'node:path'
-import { promisify } from 'node:util'
-import { brotliCompress, constants } from 'node:zlib'
-import { defaultClientConditions, defineConfig, transformWithOxc, type Plugin, type ResolvedConfig } from 'vite'
-import { svelte } from '@sveltejs/vite-plugin-svelte'
-import { isolationHeaders, metaCsp, securityHeaders } from './security.ts'
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { join, relative } from "node:path";
+import { promisify } from "node:util";
+import { brotliCompress, constants } from "node:zlib";
+import {
+  defaultClientConditions,
+  defineConfig,
+  transformWithOxc,
+  type Plugin,
+  type ResolvedConfig,
+} from "vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { isolationHeaders, metaCsp, securityHeaders } from "./security.ts";
 
 // Hosts without header support still get the CSP through <meta>; _headers covers Netlify, .htaccess covers Apache.
 function security(): Plugin {
   return {
-    name: 'masque:security',
-    apply: 'build',
+    name: "masque:security",
+    apply: "build",
     transformIndexHtml: () => [
       {
-        tag: 'meta',
-        attrs: { 'http-equiv': 'Content-Security-Policy', content: metaCsp },
-        injectTo: 'head-prepend',
+        tag: "meta",
+        attrs: { "http-equiv": "Content-Security-Policy", content: metaCsp },
+        injectTo: "head-prepend",
       },
     ],
     generateBundle() {
-      const headers = Object.entries(securityHeaders)
-      const lines = headers.map(([k, v]) => `  ${k}: ${v}`)
-      this.emitFile({ type: 'asset', fileName: '_headers', source: `/*\n${lines.join('\n')}\n` })
+      const headers = Object.entries(securityHeaders);
+      const lines = headers.map(([k, v]) => `  ${k}: ${v}`);
+      this.emitFile({
+        type: "asset",
+        fileName: "_headers",
+        source: `/*\n${lines.join("\n")}\n`,
+      });
       // No <IfModule>: without mod_headers, Apache fails loudly instead of serving the app unprotected.
       const htaccess = [
-        'AddType application/wasm .wasm',
+        "AddType application/wasm .wasm",
         // TLS may end at a proxy, which reports the original scheme in X-Forwarded-Proto.
-        'RewriteEngine On',
-        'RewriteCond %{HTTPS} off',
-        'RewriteCond %{HTTP:X-Forwarded-Proto} !https',
-        'RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]',
+        "RewriteEngine On",
+        "RewriteCond %{HTTPS} off",
+        "RewriteCond %{HTTP:X-Forwarded-Proto} !https",
+        "RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]",
         // Apache often lacks mod_brotli: serve the files precompressed by masque:brotli.
-        'AddEncoding br .br',
-        'RewriteCond %{HTTP:Accept-Encoding} \\bbr\\b',
-        'RewriteCond %{REQUEST_FILENAME}.br -f',
-        'RewriteRule ^(.+)$ $1.br [L]',
-        'Header merge Vary Accept-Encoding',
+        "AddEncoding br .br",
+        "RewriteCond %{HTTP:Accept-Encoding} \\bbr\\b",
+        "RewriteCond %{REQUEST_FILENAME}.br -f",
+        "RewriteRule ^(.+)$ $1.br [L]",
+        "Header merge Vary Accept-Encoding",
         ...headers.map(([k, v]) => `Header always set ${k} "${v}"`),
-        '<IfModule mod_deflate.c>',
-        '  AddOutputFilterByType DEFLATE application/wasm text/html text/css text/javascript application/javascript application/manifest+json image/svg+xml',
-        '</IfModule>',
-      ]
-      this.emitFile({ type: 'asset', fileName: '.htaccess', source: `${htaccess.join('\n')}\n` })
+        "<IfModule mod_deflate.c>",
+        "  AddOutputFilterByType DEFLATE application/wasm text/html text/css text/javascript application/javascript application/manifest+json image/svg+xml",
+        "</IfModule>",
+      ];
+      this.emitFile({
+        type: "asset",
+        fileName: ".htaccess",
+        source: `${htaccess.join("\n")}\n`,
+      });
     },
-  }
+  };
 }
 
 // Compiles src/sw.ts to a classic script (module service workers are not universal) listing every built file.
 function serviceWorker(): Plugin {
-  let config: ResolvedConfig
+  let config: ResolvedConfig;
   return {
-    name: 'masque:service-worker',
-    apply: 'build',
+    name: "masque:service-worker",
+    apply: "build",
     configResolved(c) {
-      config = c
+      config = c;
     },
     async closeBundle() {
-      const outDir = config.build.outDir
-      const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
+      const outDir = config.build.outDir;
+      const files = readdirSync(outDir, {
+        recursive: true,
+        withFileTypes: true,
+      })
         .filter((f) => f.isFile())
-        .map((f) => relative(outDir, join(f.parentPath, f.name)).split('\\').join('/'))
-        .filter((f) => f !== '_headers' && f !== '.htaccess' && f !== 'sw.js')
-        .sort()
-      const precache = files.map((f) => (f === 'index.html' ? config.base : config.base + f))
-      const hash = createHash('sha256')
-      for (const f of files) hash.update(f).update(readFileSync(join(outDir, f)))
-      const { code } = await transformWithOxc(readFileSync('src/sw.ts', 'utf8'), 'sw.ts')
+        .map((f) =>
+          relative(outDir, join(f.parentPath, f.name)).split("\\").join("/"),
+        )
+        .filter((f) => f !== "_headers" && f !== ".htaccess" && f !== "sw.js")
+        .sort();
+      const precache = files.map((f) =>
+        f === "index.html" ? config.base : config.base + f,
+      );
+      const hash = createHash("sha256");
+      for (const f of files)
+        hash.update(f).update(readFileSync(join(outDir, f)));
+      const { code } = await transformWithOxc(
+        readFileSync("src/sw.ts", "utf8"),
+        "sw.ts",
+      );
       writeFileSync(
-        join(outDir, 'sw.js'),
+        join(outDir, "sw.js"),
         code
-          .replace('__PRECACHE__', JSON.stringify(precache))
-          .replace('__VERSION__', JSON.stringify(hash.digest('hex').slice(0, 16))),
-      )
+          .replace("__PRECACHE__", JSON.stringify(precache))
+          .replace(
+            "__VERSION__",
+            JSON.stringify(hash.digest("hex").slice(0, 16)),
+          ),
+      );
     },
-  }
+  };
 }
 
 // Runs last: the service worker must not precache the .br files.
 function brotli(): Plugin {
-  let outDir: string
-  const compress = promisify(brotliCompress)
+  let outDir: string;
+  const compress = promisify(brotliCompress);
   return {
-    name: 'masque:brotli',
-    apply: 'build',
+    name: "masque:brotli",
+    apply: "build",
     configResolved(c) {
-      outDir = c.build.outDir
+      outDir = c.build.outDir;
     },
     closeBundle: {
-      order: 'post',
+      order: "post",
       sequential: true,
       async handler() {
-        const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
+        const files = readdirSync(outDir, {
+          recursive: true,
+          withFileTypes: true,
+        })
           .filter((f) => f.isFile() && /\.(css|m?js|wasm|onnx)$/.test(f.name))
           .map((f) => join(f.parentPath, f.name))
-          .filter((f) => statSync(f).size >= 10_240)
+          .filter((f) => statSync(f).size >= 10_240);
         await Promise.all(
           files.map(async (f) => {
-            const data = readFileSync(f)
+            const data = readFileSync(f);
             const params = {
               [constants.BROTLI_PARAM_QUALITY]: constants.BROTLI_MAX_QUALITY,
               [constants.BROTLI_PARAM_LGWIN]: constants.BROTLI_MAX_WINDOW_BITS,
               [constants.BROTLI_PARAM_SIZE_HINT]: data.length,
-            }
-            writeFileSync(`${f}.br`, await compress(data, { params }))
+            };
+            writeFileSync(`${f}.br`, await compress(data, { params }));
           }),
-        )
+        );
       },
     },
-  }
+  };
 }
 
-const modelSha256 = readFileSync('public/models/SHA256SUMS', 'utf8').split(' ')[0]
+const modelSha256 = readFileSync("public/models/SHA256SUMS", "utf8").split(
+  " ",
+)[0];
 
 export default defineConfig({
   plugins: [svelte(), security(), serviceWorker(), brotli()],
   define: {
-    __MODEL_INTEGRITY__: JSON.stringify(`sha256-${Buffer.from(modelSha256, 'hex').toString('base64')}`),
+    __MODEL_INTEGRITY__: JSON.stringify(
+      `sha256-${Buffer.from(modelSha256, "hex").toString("base64")}`,
+    ),
   },
   // ONNX Runtime threads start from its standalone glue file: from a bundled chunk they would re-run our worker code.
-  resolve: { conditions: ['onnxruntime-web-use-extern-wasm', ...defaultClientConditions] },
-  worker: { format: 'es' },
-  optimizeDeps: { exclude: ['onnxruntime-web'] },
+  resolve: {
+    conditions: ["onnxruntime-web-use-extern-wasm", ...defaultClientConditions],
+  },
+  worker: { format: "es" },
+  optimizeDeps: { exclude: ["onnxruntime-web"] },
   server: { headers: isolationHeaders },
   preview: { headers: securityHeaders },
   test: {
-    include: ['tests/unit/**/*.test.ts'],
+    include: ["tests/unit/**/*.test.ts"],
   },
-})
+});

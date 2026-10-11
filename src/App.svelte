@@ -1,64 +1,105 @@
 <script lang="ts">
-  import { i18n, setLocale, t, type Locale } from './lib/i18n.svelte.ts'
-  import Batch from './components/Batch.svelte'
-  import DropZone from './components/DropZone.svelte'
-  import Photo from './components/Photo.svelte'
-  import Video from './components/Video.svelte'
-  import { defaultMaskOptions, type MaskOptions } from './lib/anonymize/render.ts'
-  import { Engine } from './lib/detect/client.ts'
-  import type { Backend } from './lib/detect/detector.ts'
-  import offensive from './assets/brand/offensive.png'
+  import { i18n, setLocale, t, type Locale } from "./lib/i18n.svelte.ts";
+  import Batch from "./components/Batch.svelte";
+  import DropZone from "./components/DropZone.svelte";
+  import Photo from "./components/Photo.svelte";
+  import Video from "./components/Video.svelte";
+  import {
+    defaultMaskOptions,
+    type MaskOptions,
+  } from "./lib/anonymize/render.ts";
+  import { Engine } from "./lib/detect/client.ts";
+  import type { Backend } from "./lib/detect/detector.ts";
+  import offensive from "./assets/brand/offensive.png";
 
-  const worker = new Engine()
+  const worker = new Engine();
 
   const CREDITS = [
-    { name: 'CenterFace', url: 'https://github.com/Star-Clouds/CenterFace', license: 'MIT', role: 'creditCenterface' },
-    { name: 'deface', url: 'https://github.com/ORB-HD/deface', license: 'MIT', role: 'creditDeface' },
-    { name: 'ONNX Runtime Web', url: 'https://onnxruntime.ai', license: 'MIT', role: 'creditOnnx' },
-    { name: 'Mediabunny', url: 'https://mediabunny.dev', license: 'MPL-2.0', role: 'creditMediabunny' },
-    { name: 'Svelte', url: 'https://svelte.dev', license: 'MIT', role: 'creditSvelte' },
-    { name: 'fflate', url: 'https://github.com/101arrowz/fflate', license: 'MIT', role: 'creditFflate' },
-    { name: 'IBM Plex Mono', url: 'https://github.com/IBM/plex', license: 'OFL-1.1', role: 'creditPlex' },
-  ] as const
+    {
+      name: "CenterFace",
+      url: "https://github.com/Star-Clouds/CenterFace",
+      license: "MIT",
+      role: "creditCenterface",
+    },
+    {
+      name: "deface",
+      url: "https://github.com/ORB-HD/deface",
+      license: "MIT",
+      role: "creditDeface",
+    },
+    {
+      name: "ONNX Runtime Web",
+      url: "https://onnxruntime.ai",
+      license: "MIT",
+      role: "creditOnnx",
+    },
+    {
+      name: "Mediabunny",
+      url: "https://mediabunny.dev",
+      license: "MPL-2.0",
+      role: "creditMediabunny",
+    },
+    {
+      name: "Svelte",
+      url: "https://svelte.dev",
+      license: "MIT",
+      role: "creditSvelte",
+    },
+    {
+      name: "fflate",
+      url: "https://github.com/101arrowz/fflate",
+      license: "MIT",
+      role: "creditFflate",
+    },
+    {
+      name: "IBM Plex Mono",
+      url: "https://github.com/IBM/plex",
+      license: "OFL-1.1",
+      role: "creditPlex",
+    },
+  ] as const;
 
-  let backend = $state<Backend>()
-  let error = $state<string>()
-  let options = $state<MaskOptions>({ ...defaultMaskOptions })
-  let threshold = $state(0.2)
-  let files = $state.raw<File[]>([])
-  let offline = $state(false)
+  let backend = $state<Backend>();
+  let error = $state<string>();
+  let options = $state<MaskOptions>({ ...defaultMaskOptions });
+  let threshold = $state(0.2);
+  let files = $state.raw<File[]>([]);
+  let offline = $state(false);
 
-  navigator.serviceWorker?.ready.then(() => (offline = true))
+  navigator.serviceWorker?.ready.then(() => (offline = true));
 
   worker
-    .call('init', {})
+    .call("init", {})
     .then(
       (b) => (backend = b),
-      (e: Error) => (error = t('detectorFailed', e.message)),
+      (e: Error) => (error = t("detectorFailed", e.message)),
     )
     // Precaching the model while the detector downloads it makes Chromium's HTTP cache fail one of the two.
     .finally(() => {
-      if (import.meta.env.PROD && 'serviceWorker' in navigator)
-        navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
-    })
+      if (import.meta.env.PROD && "serviceWorker" in navigator)
+        navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+    });
 
   function open(selected: File[]) {
-    error = undefined
-    if (selected.length > 1 && selected.some((f) => f.type.startsWith('video/'))) {
-      error = t('oneVideo')
-      return
+    error = undefined;
+    if (
+      selected.length > 1 &&
+      selected.some((f) => f.type.startsWith("video/"))
+    ) {
+      error = t("oneVideo");
+      return;
     }
-    files = selected
+    files = selected;
   }
 
-  const onerror = (message: string) => (error = message)
-  const onclose = () => (files = [])
+  const onerror = (message: string) => (error = message);
+  const onclose = () => (files = []);
 </script>
 
 <main>
   <header>
     <h1><span class="emoji" aria-hidden="true">🎭</span>Masque</h1>
-    <p>{t('tagline')}</p>
+    <p>{t("tagline")}</p>
   </header>
 
   {#if error}
@@ -69,60 +110,96 @@
     {#key files}
       {#if files.length > 1}
         <Batch {files} {worker} bind:options bind:threshold {onclose} />
-      {:else if files[0].type.startsWith('video/')}
-        <Video file={files[0]} {worker} bind:options bind:threshold {onerror} {onclose} />
+      {:else if files[0].type.startsWith("video/")}
+        <Video
+          file={files[0]}
+          {worker}
+          bind:options
+          bind:threshold
+          {onerror}
+          {onclose}
+        />
       {:else}
-        <Photo file={files[0]} {worker} bind:options bind:threshold {onerror} {onclose} />
+        <Photo
+          file={files[0]}
+          {worker}
+          bind:options
+          bind:threshold
+          {onerror}
+          {onclose}
+        />
       {/if}
     {/key}
   {:else}
     <DropZone accept="image/*,video/*" onfiles={open} />
   {/if}
 
-  <p class="disclaimer">{t('warning')}</p>
+  <p class="disclaimer">{t("warning")}</p>
 
   <footer>
     <section aria-labelledby="about">
-      <h2 id="about">{t('about')}</h2>
-      <p>{t('aboutText')}</p>
+      <h2 id="about">{t("about")}</h2>
+      <p>{t("aboutText")}</p>
       <p>
-        {t('guideIntro')}
-        <a href={t('guideUrl')} target="_blank" rel="noopener noreferrer">{t('guideTitle')}</a>.
+        {t("guideIntro")}
+        <a href={t("guideUrl")} target="_blank" rel="noopener noreferrer"
+          >{t("guideTitle")}</a
+        >.
       </p>
       <p>
-        {t('freeSoftware')}
-        <a href="https://github.com/onestlatech/masque" target="_blank" rel="noopener noreferrer">github.com/onestlatech/masque</a>
+        {t("freeSoftware")}
+        <a
+          href="https://github.com/onestlatech/masque"
+          target="_blank"
+          rel="noopener noreferrer">github.com/onestlatech/masque</a
+        >
       </p>
     </section>
 
     <section aria-labelledby="created-by">
-      <h2 id="created-by">{t('createdBy')}</h2>
+      <h2 id="created-by">{t("createdBy")}</h2>
       <ul class="orgs">
         <li>
-          <a href="https://onestla.tech" target="_blank" rel="noopener noreferrer" class="onestla">
-            <span class="emoji" aria-hidden="true">✊</span><span>on<b>est</b>la.tech<b>/</b></span>
+          <a
+            href="https://onestla.tech"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="onestla"
+          >
+            <span class="emoji" aria-hidden="true">✊</span><span
+              >on<b>est</b>la.tech<b>/</b></span
+            >
           </a>
-          <p>{t('onestlaDescription')}</p>
+          <p>{t("onestlaDescription")}</p>
         </li>
         <li>
-          <a href="https://offensive.eco" target="_blank" rel="noopener noreferrer">
+          <a
+            href="https://offensive.eco"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <img src={offensive} alt="L’Offensive" width="96" height="96" />
           </a>
-          <p>{t('offensiveDescription')}</p>
+          <p>{t("offensiveDescription")}</p>
         </li>
       </ul>
     </section>
 
     <div class="meta">
       {#if offline}
-        <p>{t('offline')}</p>
+        <p>{t("offline")}</p>
       {/if}
       {#if backend}
-        <p class="backend">{t(backend === 'webgpu' ? 'backendGpu' : 'backendCpu')}</p>
+        <p class="backend">
+          {t(backend === "webgpu" ? "backendGpu" : "backendCpu")}
+        </p>
       {/if}
       <label>
-        {t('language')}
-        <select value={i18n.locale} onchange={(e) => setLocale(e.currentTarget.value as Locale)}>
+        {t("language")}
+        <select
+          value={i18n.locale}
+          onchange={(e) => setLocale(e.currentTarget.value as Locale)}
+        >
           <option value="en" lang="en">English</option>
           <option value="fr" lang="fr">Français</option>
         </select>
@@ -130,15 +207,17 @@
     </div>
 
     <details class="credits">
-      <summary>{t('credits')}</summary>
+      <summary>{t("credits")}</summary>
       <ul>
         {#each CREDITS as c (c.name)}
           <li>
-            <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>{t('colon')}{t(c.role)} ({c.license})
+            <a href={c.url} target="_blank" rel="noopener noreferrer"
+              >{c.name}</a
+            >{t("colon")}{t(c.role)} ({c.license})
           </li>
         {/each}
       </ul>
-      <p>{t('hosting')}</p>
+      <p>{t("hosting")}</p>
     </details>
   </footer>
 </main>
@@ -172,7 +251,8 @@
 
   /* System emoji font: the glyph varies by device, which is fine. */
   .emoji {
-    font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+    font-family:
+      "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
   }
 
   h1 .emoji {
@@ -207,7 +287,7 @@
   }
 
   h2::after {
-    content: '';
+    content: "";
     display: block;
     width: 4rem;
     margin-top: 0.25rem;
