@@ -20,6 +20,7 @@ jobs:
         env:
           DEFAULT_BRANCH: main
           MULTI_STATUS: false
+          ENABLE_GITHUB_PULL_REQUEST_SUMMARY_COMMENT: false
           FILTER_REGEX_EXCLUDE: package-lock\.json
           # Prettier runs from npm, which has the Svelte plugin; Biome would conflict with it
           VALIDATE_BIOME_FORMAT: false
