@@ -74,6 +74,65 @@ test("mosaic replaces semitransparent source pixels", async ({ page }) => {
   expect(pixels[3]).toBeLessThan(135);
 });
 
+test("emoji masks keep the face covered outside the glyph", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const png = await page.evaluate(async () => {
+    const ctx = new OffscreenCanvas(512, 512).getContext("2d")!;
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, 512, 512);
+    return [
+      ...new Uint8Array(await (await ctx.canvas.convertToBlob()).arrayBuffer()),
+    ];
+  });
+  await page.locator("input[type=file]").setInputFiles({
+    name: "white.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png),
+  });
+  const download = page.getByRole("button", { name: "Download", exact: true });
+  await expect(download).toBeEnabled({ timeout: 60_000 });
+  await page.getByLabel("Style").selectOption("emoji");
+  await page.getByLabel("Oval masks").uncheck();
+  const canvas = page.locator("canvas");
+  await canvas.scrollIntoViewIfNeeded();
+  const bounds = (await canvas.boundingBox())!;
+  await page.mouse.move(
+    bounds.x + bounds.width / 4,
+    bounds.y + bounds.height / 4,
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    bounds.x + (bounds.width * 3) / 4,
+    bounds.y + (bounds.height * 3) / 4,
+  );
+  await page.mouse.up();
+  const [dl] = await Promise.all([
+    page.waitForEvent("download"),
+    download.click(),
+  ]);
+  const bytes = readFileSync(await dl.path());
+  const [corner, center] = await page.evaluate(async (data) => {
+    const bitmap = await createImageBitmap(
+      new Blob([Uint8Array.from(atob(data), (c) => c.charCodeAt(0))]),
+    );
+    const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext(
+      "2d",
+    )!;
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return [
+      [...ctx.getImageData(70, 70, 1, 1).data],
+      [...ctx.getImageData(256, 256, 1, 1).data],
+    ];
+  }, bytes.toString("base64"));
+  expect(corner).toEqual([0, 0, 0, 255]);
+  // Yellow, whatever the platform's emoji font.
+  expect(center[0]).toBeGreaterThan(200);
+  expect(center[2]).toBeLessThan(120);
+});
+
 test("transparent photos do not inherit detections from a previous photo", async ({
   page,
 }) => {

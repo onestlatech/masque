@@ -16,11 +16,12 @@
     {t("style")}
     <select bind:value={options.mode}>
       <option value="solid">{t("solid")}</option>
+      <option value="emoji">{t("emoji")}</option>
       <option value="mosaic">{t("mosaic")}</option>
       <option value="blur">{t("blur")}</option>
     </select>
   </label>
-  {#if options.mode !== "solid"}
+  {#if options.mode === "mosaic" || options.mode === "blur"}
     <p class="warning" role="note">{t("weakWarning")}</p>
   {/if}
 
