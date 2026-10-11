@@ -16,6 +16,7 @@ const en = {
   masking: "Masking",
   style: "Style",
   solid: "Solid (safest)",
+  emoji: "Emoji",
   mosaic: "Mosaic",
   blur: "Blur",
   weakWarning:
@@ -107,6 +108,7 @@ const fr: typeof en = {
   masking: "Masquage",
   style: "Style",
   solid: "Plein (le plus sûr)",
+  emoji: "Émoji",
   mosaic: "Mosaïque",
   blur: "Flou",
   weakWarning:
