@@ -56,6 +56,40 @@ export function maskRect(
   };
 }
 
+interface Mask {
+  /** Clamped to the image. */
+  r: Rect;
+  /** Unclamped, bounding the oval. */
+  e: Box;
+}
+
+/** Conservative: an oval counts as covering only the rectangle bounding the other mask. */
+function covers(outer: Mask, inner: Mask, ellipse: boolean): boolean {
+  const { x, y, width, height } = inner.r;
+  const corners = [
+    [x, y],
+    [x + width, y],
+    [x, y + height],
+    [x + width, y + height],
+  ];
+  if (!ellipse) {
+    const o = outer.r;
+    return corners.every(
+      ([cx, cy]) =>
+        cx >= o.x && cy >= o.y && cx <= o.x + o.width && cy <= o.y + o.height,
+    );
+  }
+  const { x1, y1, x2, y2 } = outer.e;
+  // One pixel in from the edge, which antialiasing leaves partly transparent.
+  const rx = (x2 - x1) / 2 - 1;
+  const ry = (y2 - y1) / 2 - 1;
+  if (rx <= 0 || ry <= 0) return false;
+  return corners.every(
+    ([cx, cy]) =>
+      ((cx - (x1 + x2) / 2) / rx) ** 2 + ((cy - (y1 + y2) / 2) / ry) ** 2 <= 1,
+  );
+}
+
 /** Number of samples across the longest side. */
 const SAMPLES: Record<Exclude<Mode, "solid" | "emoji">, number> = {
   mosaic: 6,
@@ -100,20 +134,37 @@ function emojiCanvas(emoji: string): OffscreenCanvas | null {
   return canvas;
 }
 
-/** `source` holds the unmasked pixels: sampling the canvas being drawn copies all of it for every mask in WebKit. */
+/**
+ * `source` holds the unmasked pixels: sampling the canvas being drawn copies all of it for every mask in WebKit.
+ * Returns which boxes got a mask.
+ */
 export function applyMasks(
   ctx: Context,
   boxes: Box[],
   options: MaskOptions,
   source: CanvasImageSource = ctx.canvas,
-) {
+): boolean[] {
   const { width, height } = ctx.canvas;
-  for (const b of boxes) {
-    const r = maskRect(b, options.maskScale, width, height);
-    if (r.width < 1 || r.height < 1) continue;
-
+  const masks = boxes.map((b) => ({
+    r: maskRect(b, options.maskScale, width, height),
     // Fitted to the clamped rectangle, the oval would shrink and uncover a face on the image edge.
-    const e = scaleBox(b, options.maskScale);
+    e: scaleBox(b, options.maskScale),
+  }));
+  const drawn = masks.map(() => false);
+  for (const [i, { r, e }] of masks.entries()) {
+    if (r.width < 1 || r.height < 1) continue;
+    // A mask inside another hides nothing more, and an emoji on an emoji looks broken; of two equal masks, keep the first.
+    if (
+      masks.some(
+        (m, j) =>
+          j !== i &&
+          covers(m, masks[i], options.ellipse) &&
+          (j < i || !covers(masks[i], m, options.ellipse)),
+      )
+    )
+      continue;
+
+    drawn[i] = true;
     ctx.save();
     ctx.beginPath();
     if (options.ellipse) {
@@ -151,4 +202,5 @@ export function applyMasks(
     }
     ctx.restore();
   }
+  return drawn;
 }
