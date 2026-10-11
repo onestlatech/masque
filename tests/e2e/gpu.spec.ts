@@ -1,5 +1,10 @@
 import { expect, test } from "./fixtures";
 
+// File-level so other browsers never launch with this Chromium-only flag.
+test.skip(
+  ({ browserName }) => browserName !== "chromium",
+  "Only Chromium enables WebGPU from the command line",
+);
 test.use({ launchOptions: { args: ["--enable-unsafe-webgpu"] } });
 
 // ONNX Runtime ignores invalid GPU commands, such as a phone GPU rejecting a large buffer, and returns no faces.
@@ -13,14 +18,7 @@ const failingGpu = `{
 }
 `;
 
-test("falls back to the CPU when the GPU fails", async ({
-  page,
-  browserName,
-}) => {
-  test.skip(
-    browserName !== "chromium",
-    "Only Chromium enables WebGPU from the command line",
-  );
+test("falls back to the CPU when the GPU fails", async ({ page }) => {
   await page.route("**/assets/worker-*.js", async (route) => {
     const response = await route.fetch();
     await route.fulfill({
