@@ -13,6 +13,8 @@ export default defineConfig({
     command: "npm run build && npm run preview -- --port 4173 --strictPort",
     url: "http://localhost:4173",
     reuseExistingServer: !process.env.CI,
+    // Max-quality Brotli on the 28 MB wasm takes minutes on CI runners.
+    timeout: process.env.CI ? 300_000 : 60_000,
   },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
