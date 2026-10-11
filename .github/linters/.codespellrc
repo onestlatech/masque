@@ -1,0 +1,4 @@
+[codespell]
+check-hidden =
+skip = package-lock.json,*.log,.git,node_modules
+ignore-words-list = appareil,connexion,informations,inh,mouvements
