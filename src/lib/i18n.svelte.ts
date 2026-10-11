@@ -17,6 +17,7 @@ const en = {
   style: "Style",
   solid: "Solid (safest)",
   emoji: "Emoji",
+  pickEmoji: "Emoji to use",
   mosaic: "Mosaic",
   blur: "Blur",
   weakWarning:
@@ -109,6 +110,7 @@ const fr: typeof en = {
   style: "Style",
   solid: "Plein (le plus sûr)",
   emoji: "Émoji",
+  pickEmoji: "Émoji à utiliser",
   mosaic: "Mosaïque",
   blur: "Flou",
   weakWarning:
