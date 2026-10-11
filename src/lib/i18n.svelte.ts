@@ -59,7 +59,7 @@ const en = {
   'error.cannotEncode': 'Your browser cannot encode this video.',
   about: 'About',
   aboutText:
-    'Masque hides the faces of people in photos and videos of demonstrations, so you can share them without exposing protesters. It runs entirely in your browser: your files never leave your device.',
+    'Masque hides the faces of people in photos and videos of demonstrations, parties, or any other event, so you can share them without exposing the people in them. It runs entirely in your browser: your files never leave your device.',
   guideIntro: 'Hiding faces is not enough to protect yourself. Before a protest, read',
   guideTitle: 'Attending a Protest (EFF)',
   guideUrl: 'https://ssd.eff.org/module/attending-protest',
@@ -138,7 +138,7 @@ const fr: typeof en = {
   'error.cannotEncode': 'Votre navigateur ne sait pas encoder cette vidéo.',
   about: 'À propos',
   aboutText:
-    'Masque cache les visages des personnes sur les photos et vidéos de manifestations, pour les partager sans exposer les manifestant·es. Tout se passe dans votre navigateur : vos fichiers ne quittent jamais votre appareil.',
+    'Masque cache les visages des personnes sur les photos et vidéos de manifestations, de soirées ou de tout autre événement, pour les partager sans exposer les personnes présentes. Tout se passe dans votre navigateur : vos fichiers ne quittent jamais votre appareil.',
   guideIntro: 'Masquer les visages ne suffit pas à vous protéger. Avant une manifestation, lisez le',
   guideTitle: 'Guide d’autodéfense numérique pour les mouvements sociaux',
   guideUrl: 'https://onestla.tech/publications/guide-autodefense-numerique/',
