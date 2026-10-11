@@ -57,7 +57,7 @@
 
 <main>
   <header>
-    <h1><span class="fist" aria-hidden="true">✊</span>Masque</h1>
+    <h1><span class="emoji" aria-hidden="true">🎭</span>Masque</h1>
     <p>{t('tagline')}</p>
   </header>
 
@@ -100,7 +100,7 @@
       <ul class="orgs">
         <li>
           <a href="https://onestla.tech" target="_blank" rel="noopener noreferrer" class="onestla">
-            <span class="fist" aria-hidden="true">✊</span><span>on<b>est</b>la.tech<b>/</b></span>
+            <span class="emoji" aria-hidden="true">✊</span><span>on<b>est</b>la.tech<b>/</b></span>
           </a>
           <p>{t('onestlaDescription')}</p>
         </li>
@@ -171,11 +171,11 @@
   }
 
   /* System emoji font: the glyph varies by device, which is fine. */
-  .fist {
+  .emoji {
     font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
   }
 
-  h1 .fist {
+  h1 .emoji {
     margin-right: 0.5em;
   }
 
@@ -238,7 +238,7 @@
     font-size: 1.5rem;
   }
 
-  .onestla .fist {
+  .onestla .emoji {
     font-size: 2.5rem;
   }
 
