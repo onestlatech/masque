@@ -8,7 +8,7 @@ Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) 
 
 The interface is available in English and French; it follows the browser language and can be switched in the footer.
 
-Masque is created by [onestla.tech](https://onestla.tech) and [L'Offensive](https://offensive.eco), and uses onestla.tech's design.
+Masque is created by [onestla.tech](https://onestla.tech) and [L'Offensive](https://offensive.eco), and uses onestla.tech's design. https://masque.onestla.tech is hosted by [Infomaniak](https://www.infomaniak.com).
 
 ## Privacy
 
