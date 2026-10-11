@@ -60,6 +60,9 @@ const en = {
   about: 'About',
   aboutText:
     'Masque hides the faces of people in photos and videos of demonstrations, so you can share them without exposing protesters. It runs entirely in your browser: your files never leave your device.',
+  guideIntro: 'Hiding faces is not enough to protect yourself. Before a protest, read',
+  guideTitle: 'Attending a Protest (EFF)',
+  guideUrl: 'https://ssd.eff.org/module/attending-protest',
   createdBy: 'Created by',
   onestlaDescription: 'A collective of tech workers engaged in social struggles.',
   offensiveDescription: 'Let’s come together to build a democratic, ecological, egalitarian, multicultural, and feminist society.',
@@ -135,6 +138,9 @@ const fr: typeof en = {
   about: 'À propos',
   aboutText:
     'Masque cache les visages des personnes sur les photos et vidéos de manifestations, pour les partager sans exposer les manifestant·es. Tout se passe dans votre navigateur : vos fichiers ne quittent jamais votre appareil.',
+  guideIntro: 'Masquer les visages ne suffit pas à vous protéger. Avant une manifestation, lisez le',
+  guideTitle: 'Guide d’autodéfense numérique pour les mouvements sociaux',
+  guideUrl: 'https://onestla.tech/publications/guide-autodefense-numerique/',
   createdBy: 'Une création de',
   onestlaDescription: 'Collectif de travailleuses et travailleurs du numérique engagé·es dans les luttes sociales.',
   offensiveDescription: 'Regroupons-nous pour bâtir une société démocratique, écologiste, égalitaire, multiculturelle et féministe.',

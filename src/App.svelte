@@ -85,6 +85,10 @@
     <section aria-labelledby="about">
       <h2 id="about">{t('about')}</h2>
       <p>{t('aboutText')}</p>
+      <p>
+        {t('guideIntro')}
+        <a href={t('guideUrl')} target="_blank" rel="noopener noreferrer">{t('guideTitle')}</a>.
+      </p>
     </section>
 
     <section aria-labelledby="created-by">
