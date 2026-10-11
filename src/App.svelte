@@ -115,10 +115,7 @@
         {t('freeSoftware')}
         <a href="https://github.com/onestlatech/masque" target="_blank" rel="noopener noreferrer">github.com/onestlatech/masque</a>
       </p>
-      <p>
-        {t('hostedBy')}
-        <a href="https://www.infomaniak.com" target="_blank" rel="noopener noreferrer">Infomaniak</a>.
-      </p>
+      <p>{t('hosting')}</p>
       <ul class="credits">
         {#each CREDITS as c (c.name)}
           <li>
