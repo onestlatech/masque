@@ -30,6 +30,8 @@
 
   let canvas: HTMLCanvasElement;
   let hovered = $state<number>();
+  /** Masks under another one are neither drawn nor outlined, so pointers must not grab them. */
+  let drawn: boolean[] = [];
   let drag:
     | { kind: "new"; x: number; y: number; id?: number }
     | { kind: "move" | "resize"; x: number; y: number; id: number; orig: Box }
@@ -40,11 +42,12 @@
     canvas.height = bitmap.height;
     const ctx = canvas.getContext("2d")!;
     ctx.drawImage(bitmap, 0, 0);
-    applyMasks(ctx, faces, options, bitmap);
+    drawn = applyMasks(ctx, faces, options, bitmap);
 
     const px = pixelRatio();
     ctx.lineWidth = 2 * px;
-    for (const f of faces) {
+    for (const [i, f] of faces.entries()) {
+      if (!drawn[i] && f.id !== selected) continue;
       ctx.strokeStyle =
         f.id === selected ? "#facc15" : f.manual ? "#60a5fa" : "#f87171";
       ctx.strokeRect(f.x1, f.y1, f.x2 - f.x1, f.y2 - f.y1);
@@ -76,6 +79,7 @@
     // Topmost first: the last drawn box wins.
     for (let i = faces.length - 1; i >= 0; i--) {
       const f = faces[i];
+      if (!drawn[i] && f.id !== selected) continue;
       if (x >= f.x1 && x <= f.x2 && y >= f.y1 && y <= f.y2) return f;
     }
   }
