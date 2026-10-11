@@ -89,6 +89,10 @@
         {t('guideIntro')}
         <a href={t('guideUrl')} target="_blank" rel="noopener noreferrer">{t('guideTitle')}</a>.
       </p>
+      <p>
+        {t('freeSoftware')}
+        <a href="https://github.com/onestlatech/masque" target="_blank" rel="noopener noreferrer">github.com/onestlatech/masque</a>
+      </p>
     </section>
 
     <section aria-labelledby="created-by">
@@ -109,22 +113,6 @@
       </ul>
     </section>
 
-    <section aria-labelledby="credits">
-      <h2 id="credits">{t('credits')}</h2>
-      <p>
-        {t('freeSoftware')}
-        <a href="https://github.com/onestlatech/masque" target="_blank" rel="noopener noreferrer">github.com/onestlatech/masque</a>
-      </p>
-      <p>{t('hosting')}</p>
-      <ul class="credits">
-        {#each CREDITS as c (c.name)}
-          <li>
-            <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>{t('colon')}{t(c.role)} ({c.license})
-          </li>
-        {/each}
-      </ul>
-    </section>
-
     <div class="meta">
       {#if offline}
         <p>{t('offline')}</p>
@@ -140,6 +128,18 @@
         </select>
       </label>
     </div>
+
+    <details class="credits">
+      <summary>{t('credits')}</summary>
+      <ul>
+        {#each CREDITS as c (c.name)}
+          <li>
+            <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>{t('colon')}{t(c.role)} ({c.license})
+          </li>
+        {/each}
+      </ul>
+      <p>{t('hosting')}</p>
+    </details>
   </footer>
 </main>
 
@@ -260,5 +260,14 @@
 
   .meta p {
     margin: 0;
+  }
+
+  .credits {
+    margin-top: 1rem;
+    color: var(--muted);
+  }
+
+  .credits summary {
+    cursor: pointer;
   }
 </style>
