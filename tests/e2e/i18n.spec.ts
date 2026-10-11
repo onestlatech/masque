@@ -14,9 +14,12 @@ test("speaks French to French browsers and remembers the choice", async ({
   await page
     .locator("input[type=file]")
     .setInputFiles(new URL("../fixtures/city.jpg", import.meta.url).pathname);
-  await expect(page.locator("summary")).toHaveText(/^\d+ masques$/, {
-    timeout: 60_000,
-  });
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^\d+ masques$/,
+    {
+      timeout: 60_000,
+    },
+  );
   await expect(page.getByRole("button", { name: "Télécharger" })).toBeVisible();
   await expect(page.getByText("0,20")).toBeVisible();
 

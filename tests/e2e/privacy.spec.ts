@@ -79,9 +79,12 @@ test("transparent photos do not inherit detections from a previous photo", async
 }) => {
   await page.goto("/");
   await page.locator("input[type=file]").setInputFiles(fixture);
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d* masks$/, {
-    timeout: 60_000,
-  });
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d* masks$/,
+    {
+      timeout: 60_000,
+    },
+  );
   const png = await page
     .locator("canvas")
     .evaluate(async (canvas: HTMLCanvasElement) => {
@@ -100,5 +103,7 @@ test("transparent photos do not inherit detections from a previous photo", async
   await expect(
     page.getByRole("button", { name: "Download", exact: true }),
   ).toBeEnabled({ timeout: 60_000 });
-  await expect(page.locator("summary")).toHaveText("0 masks");
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    "0 masks",
+  );
 });

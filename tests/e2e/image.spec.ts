@@ -24,9 +24,12 @@ const iou = (a: Box | number[], b: Box | number[]) => {
 test.beforeEach(async ({ page }) => {
   await page.goto("/");
   await page.locator("input[type=file]").setInputFiles(fixture);
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d* masks$/, {
-    timeout: 60_000,
-  });
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d* masks$/,
+    {
+      timeout: 60_000,
+    },
+  );
 });
 
 test("finds the same faces as deface", async ({ page }) => {
@@ -89,7 +92,7 @@ test("removes a mask with the keyboard and adds one by dragging", async ({
   const masks = page.locator("[data-box]");
   const count = await masks.count();
 
-  await page.locator("summary").click();
+  await page.locator("details:not(.credits) > summary").click();
   await page
     .getByRole("button", { name: "Remove mask 1", exact: true })
     .click();

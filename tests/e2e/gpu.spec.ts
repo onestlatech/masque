@@ -42,7 +42,10 @@ test("falls back to the CPU when the GPU fails", async ({
   await page
     .locator("input[type=file]")
     .setInputFiles(new URL("../fixtures/city.jpg", import.meta.url).pathname);
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d+ masks$/, {
-    timeout: 60_000,
-  });
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d+ masks$/,
+    {
+      timeout: 60_000,
+    },
+  );
 });

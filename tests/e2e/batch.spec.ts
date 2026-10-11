@@ -16,7 +16,9 @@ test("masks several photos and downloads them as one zip", async ({ page }) => {
   await expect(download).toBeEnabled({ timeout: 60_000 });
 
   await page.getByRole("button", { name: /^2/ }).click();
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d* masks$/);
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d* masks$/,
+  );
 
   const [dl] = await Promise.all([
     page.waitForEvent("download"),

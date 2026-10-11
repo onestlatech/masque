@@ -29,7 +29,9 @@ test("exports a masked video without metadata or sound", async ({
   await expect(page.getByRole("slider", { name: "Frame" })).toBeVisible({
     timeout: 120_000,
   });
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d* masks$/);
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d* masks$/,
+  );
 
   await page.getByLabel("Remove sound").check();
   const [dl] = await Promise.all([
@@ -158,7 +160,9 @@ test("mask range buttons follow the displayed frame during a pending seek", asyn
   await page.locator("input[type=file]").setInputFiles(fixture);
   const slider = page.getByRole("slider", { name: "Frame" });
   await expect(slider).toBeVisible({ timeout: 120_000 });
-  await expect(page.locator("summary")).toHaveText(/^[1-9]\d* masks$/);
+  await expect(page.locator("details:not(.credits) > summary")).toHaveText(
+    /^[1-9]\d* masks$/,
+  );
   const canvas = page.locator("canvas");
   await canvas.scrollIntoViewIfNeeded();
   const box = (await canvas.boundingBox())!;
