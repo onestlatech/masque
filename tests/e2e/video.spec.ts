@@ -116,6 +116,18 @@ test("exports a masked video without metadata or sound", async ({
       .toEqual(["masque-other-tab.mp4"]);
 });
 
+test("opens a video reported with a generic MIME type", async ({ page }) => {
+  await page.goto("/");
+  await page.locator("input[type=file]").setInputFiles({
+    name: "city.mp4",
+    mimeType: "application/octet-stream",
+    buffer: readFileSync(fixture),
+  });
+  await expect(page.getByRole("slider", { name: "Frame" })).toBeVisible({
+    timeout: 120_000,
+  });
+});
+
 test("scrubs frames and adds a mask spanning the video", async ({ page }) => {
   await page.goto("/");
   await page.locator("input[type=file]").setInputFiles(fixture);
