@@ -216,6 +216,7 @@
         {/each}
       </ul>
       <p>{t("hosting")}</p>
+      <p>{t("aiDisclosure")}</p>
     </details>
   </footer>
 </main>
