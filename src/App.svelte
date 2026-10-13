@@ -9,6 +9,7 @@
     type MaskOptions,
   } from "./lib/anonymize/render.ts";
   import { Engine } from "./lib/detect/client.ts";
+  import { isVideo } from "./lib/media/image.ts";
   import type { Backend } from "./lib/detect/detector.ts";
   import offensive from "./assets/brand/offensive.png";
 
@@ -82,10 +83,7 @@
 
   function open(selected: File[]) {
     error = undefined;
-    if (
-      selected.length > 1 &&
-      selected.some((f) => f.type.startsWith("video/"))
-    ) {
+    if (selected.length > 1 && selected.some(isVideo)) {
       error = t("oneVideo");
       return;
     }
@@ -110,7 +108,7 @@
     {#key files}
       {#if files.length > 1}
         <Batch {files} {worker} bind:options bind:threshold {onclose} />
-      {:else if files[0].type.startsWith("video/")}
+      {:else if isVideo(files[0])}
         <Video
           file={files[0]}
           {worker}

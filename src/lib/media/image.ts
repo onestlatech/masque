@@ -56,6 +56,13 @@ const EXTENSIONS: Record<string, string> = {
   "application/zip": "zip",
 };
 
+const VIDEO_EXTENSION = /\.(m4v|mkv|mov|mp4|webm)$/i;
+
+/** Some systems report videos with an empty or generic MIME type. */
+export const isVideo = (file: File) =>
+  file.type.startsWith("video/") ||
+  (!file.type.startsWith("image/") && VIDEO_EXTENSION.test(file.name));
+
 /** Random name: the original may contain a date, place, or the photographer's name. */
 export const outputName = (type: string) =>
   `masque-${crypto.randomUUID().slice(0, 8)}.${EXTENSIONS[type]}`;
