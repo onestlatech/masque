@@ -178,7 +178,7 @@ const fr: typeof en = {
     "Masque est un logiciel libre, sous licence AGPL. Code source :",
   hosting: "Hébergé par Infomaniak.",
   aiDisclosure:
-    "Masque utilise un modèle d’IA qui s’exécute entièrement sur votre appareil. Des humains ont conçu et testé l’application. Le code a été généré par des agents d’IA, supervisés et relus par des humains.",
+    "Masque utilise un modèle d’IA qui s’exécute entièrement sur votre appareil. Des humain·es ont conçu et testé l’application. Le code a été généré par des agents d’IA, supervisés et relus par des humain·es.",
   colon: " : ",
   creditCenterface: "modèle de détection des visages",
   creditDeface: "l’outil en ligne de commande dont Masque s’inspire",
