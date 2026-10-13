@@ -66,6 +66,8 @@ const en = {
   downloadAll: (n: number) => `Download all (${n} photos, ZIP)`,
   "error.noVideo": "This file has no video.",
   "error.cannotDecode": "Your browser cannot decode this video format.",
+  "error.noWebCodecs":
+    "Your browser cannot process videos. Try Chrome, Edge or Safari, or Firefox on a computer.",
   "error.cannotEncode": "Your browser cannot encode this video.",
   about: "About",
   aboutText:
@@ -160,6 +162,8 @@ const fr: typeof en = {
   downloadAll: (n) => `Tout télécharger (${n} photos, ZIP)`,
   "error.noVideo": "Ce fichier ne contient pas de vidéo.",
   "error.cannotDecode": "Votre navigateur ne sait pas décoder ce format vidéo.",
+  "error.noWebCodecs":
+    "Votre navigateur ne sait pas traiter les vidéos. Essayez Chrome, Edge ou Safari, ou Firefox sur ordinateur.",
   "error.cannotEncode": "Votre navigateur ne sait pas encoder cette vidéo.",
   about: "À propos",
   aboutText:

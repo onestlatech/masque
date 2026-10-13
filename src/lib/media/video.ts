@@ -94,6 +94,12 @@ export class Video {
   }
 
   static async open(file: Blob): Promise<Video> {
+    // Firefox for Android ships neither: checking the codec would blame the file.
+    if (
+      typeof VideoDecoder === "undefined" ||
+      typeof VideoEncoder === "undefined"
+    )
+      throw new Error("error.noWebCodecs");
     const input = new Input({
       source: new BlobSource(file),
       formats: ALL_FORMATS,

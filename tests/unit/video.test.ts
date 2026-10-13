@@ -61,6 +61,8 @@ beforeEach(() => {
     },
   );
   vi.stubGlobal("VideoFrame", class {});
+  vi.stubGlobal("VideoDecoder", class {});
+  vi.stubGlobal("VideoEncoder", class {});
   vi.stubGlobal("navigator", { storage: { getDirectory: async () => root } });
   vi.mocked(Input).mockImplementation(function () {
     return {
@@ -217,4 +219,10 @@ test("unsupported input is disposed", async () => {
   track.canDecode.mockResolvedValueOnce(false);
   await expect(Video.open(new Blob())).rejects.toThrow("error.cannotDecode");
   expect(dispose).toHaveBeenCalledOnce();
+});
+
+test("browsers without WebCodecs are reported before reading the file", async () => {
+  vi.stubGlobal("VideoEncoder", undefined);
+  await expect(Video.open(new Blob())).rejects.toThrow("error.noWebCodecs");
+  expect(Input).not.toHaveBeenCalled();
 });
