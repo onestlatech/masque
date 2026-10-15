@@ -222,6 +222,10 @@
   .stage {
     position: relative;
     margin: 0 auto;
+    /* On touch screens, a long press would select the page or open the copy menu instead of drawing. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
 
   canvas {
