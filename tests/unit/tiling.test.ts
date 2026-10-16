@@ -29,6 +29,18 @@ test("large images get a downscaled pass then same-shape tiles", () => {
     expect(p).toMatchObject({ inputWidth: 640, inputHeight: 640 });
 });
 
+test("without tiles, large images get a single downscaled pass", () => {
+  expect(planPasses(3840, 2160, { direct: 1280, tile: 0, overlap: 0 })).toEqual(
+    [
+      {
+        region: { x: 0, y: 0, width: 3840, height: 2160 },
+        inputWidth: 1280,
+        inputHeight: 736,
+      },
+    ],
+  );
+});
+
 test("tiles cover the image and overlap enough for any small face", () => {
   const { tile, overlap } = defaultTiling;
   for (const [width, height] of [

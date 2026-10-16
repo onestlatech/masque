@@ -17,6 +17,7 @@ export interface Pass {
 export interface TilingOptions {
   /** Images whose longest side fits are processed in one pass. */
   direct: number;
+  /** 0 scales larger images down to `direct` in a single pass instead. */
   tile: number;
   /** Faces up to this size are guaranteed to fit entirely in at least one tile. */
   overlap: number;
@@ -60,8 +61,9 @@ export function planPasses(
   });
   if (Math.max(width, height) <= direct) return [whole(width, height)];
 
-  const s = tile / Math.max(width, height);
+  const s = (tile || direct) / Math.max(width, height);
   const passes = [whole(Math.round(width * s), Math.round(height * s))];
+  if (!tile) return passes;
   for (const [y, h] of spans(height, tile, overlap)) {
     for (const [x, w] of spans(width, tile, overlap)) {
       passes.push({

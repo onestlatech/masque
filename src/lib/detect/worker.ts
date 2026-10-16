@@ -38,8 +38,8 @@ export type Response =
   | { id: number; error: string }
   | { id: number; progress: number };
 
-// Video frames run in one full-resolution pass: tiling every frame would be too slow.
-const VIDEO_TILING = { direct: Infinity, tile: 0, overlap: 0 };
+// Tiling every frame would be too slow, and a full-resolution pass gets Safari killed on iPhones: 3.5 GB for 4K.
+const VIDEO_TILING = { direct: 1280, tile: 0, overlap: 0 };
 
 let detector: Promise<Detector> | undefined;
 const videos = new Map<number, Video>();
