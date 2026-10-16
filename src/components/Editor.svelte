@@ -33,8 +33,10 @@
   /** Masks under another one are neither drawn nor outlined, so pointers must not grab them. */
   let drawn: boolean[] = [];
   let drag:
-    | { kind: "new"; x: number; y: number; id?: number }
-    | { kind: "move" | "resize"; x: number; y: number; id: number; orig: Box }
+    | ({ pointer: number; x: number; y: number } & (
+        | { kind: "new"; id?: number }
+        | { kind: "move" | "resize"; id: number; orig: Box }
+      ))
     | undefined;
 
   $effect(() => {
@@ -85,12 +87,14 @@
   }
 
   function pointerdown(e: PointerEvent) {
+    // A second finger starts a pinch, which the browser turns into a zoom.
+    if (drag && drag.pointer !== e.pointerId) return cancel();
     canvas.setPointerCapture(e.pointerId);
     const { x, y } = point(e);
     const face = hit(x, y);
     if (!face) {
       selected = undefined;
-      drag = { kind: "new", x, y };
+      drag = { kind: "new", pointer: e.pointerId, x, y };
       return;
     }
     selected = face.id;
@@ -98,6 +102,7 @@
     const kind = x >= face.x2 - h && y >= face.y2 - h ? "resize" : "move";
     drag = {
       kind,
+      pointer: e.pointerId,
       x,
       y,
       id: face.id,
@@ -144,6 +149,15 @@
     );
   }
 
+  /** Undoes the gesture in progress. */
+  function cancel() {
+    const d = drag;
+    drag = undefined;
+    if (d?.kind === "new") {
+      if (d.id !== undefined) remove(d.id);
+    } else if (d) onchange(d.id, d.orig);
+  }
+
   function remove(id: number) {
     if (selected === id) selected = undefined;
     onremove(id);
@@ -171,6 +185,7 @@
     onpointerdown={pointerdown}
     onpointermove={pointermove}
     onpointerup={() => (drag = undefined)}
+    onpointercancel={cancel}
     onpointerleave={(e) => {
       if (!(
         e.relatedTarget instanceof Element && e.relatedTarget.closest(".remove")
@@ -228,7 +243,7 @@
     display: block;
     width: 100%;
     height: 100%;
-    touch-action: none;
+    touch-action: pinch-zoom;
     cursor: crosshair;
   }
 

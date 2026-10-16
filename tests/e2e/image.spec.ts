@@ -113,6 +113,35 @@ test("removes a mask with the keyboard and adds one by dragging", async ({
   await expect(masks).toHaveCount(count - 1);
 });
 
+test("pinching does not draw a mask", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "touch input needs CDP");
+  const masks = page.locator("[data-box]");
+  const count = await masks.count();
+  const canvas = page.locator("canvas");
+  await canvas.evaluate((e) => e.scrollIntoView());
+  const box = (await canvas.boundingBox())!;
+  const cdp = await page.context().newCDPSession(page);
+  const touch = (
+    type: "touchStart" | "touchMove" | "touchEnd",
+    ...points: [number, number][]
+  ) =>
+    cdp.send("Input.dispatchTouchEvent", {
+      type,
+      touchPoints: points.map(([x, y], id) => ({
+        x: box.x + x,
+        y: box.y + y,
+        id,
+      })),
+    });
+  // Top-left sky: no faces there.
+  await touch("touchStart", [5, 5]);
+  await touch("touchMove", [20, 20]);
+  await touch("touchStart", [20, 20], [60, 60]);
+  await touch("touchMove", [10, 10], [80, 80]);
+  await touch("touchEnd");
+  await expect(masks).toHaveCount(count);
+});
+
 test("removes a mask with its cross", async ({ page }) => {
   const masks = page.locator("[data-box]");
   const count = await masks.count();
