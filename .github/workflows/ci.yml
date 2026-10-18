@@ -81,12 +81,15 @@ jobs:
           name: dist
           path: dist
       - env:
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-          SSH_DESTINATION: ${{ secrets.SSH_DESTINATION }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_USER: ${{ secrets.FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        # The FTP account is confined to the site folder; .infomaniak-maintenance.html and .user.ini belong to the host.
         run: |
-          install -m 700 -d ~/.ssh
-          (umask 077 && printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519)
-          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          # The key is locked to rrsync in the site folder; .infomaniak-maintenance.html and .user.ini belong to the host.
-          rsync -rlz --checksum --delete --exclude=.infomaniak-maintenance.html --exclude=.user.ini dist/ "$SSH_DESTINATION:./"
+          sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends lftp
+          lftp -c "
+            set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true
+            set xfer:use-temp-file true
+            open --env-password -u \"$FTP_USER\" \"$FTP_HOST\"
+            mirror --reverse --delete --no-perms --parallel=4 --exclude-glob .infomaniak-maintenance.html --exclude-glob .user.ini dist/ ./
+          "
