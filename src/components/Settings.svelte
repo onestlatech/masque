@@ -9,6 +9,9 @@
     watermark,
   } from "../lib/settings.svelte.ts";
 
+  /** Called once a setting has changed, rather than for every step of a slider. */
+  let { onchange }: { onchange: () => void } = $props();
+
   const options = $derived(settings.options);
   let thumbnail = $state<string>();
   let watermarkError = $state<string>();
@@ -28,6 +31,7 @@
       // Without the file name, which may identify its author.
       await setWatermark(new Blob([file], { type: file.type }));
       watermarkError = undefined;
+      onchange();
     } catch {
       watermarkError = t("cannotOpen", file.name);
     }
@@ -45,7 +49,7 @@
   </label>
 {/snippet}
 
-<fieldset>
+<fieldset {onchange}>
   <legend>{t("masking")}</legend>
 
   <label>
@@ -121,7 +125,7 @@
   </label>
 </fieldset>
 
-<fieldset>
+<fieldset {onchange}>
   <legend>{t("watermark")}</legend>
   {#if watermark.bitmap}
     <img src={thumbnail} alt={t("watermarkImage")} />
@@ -150,8 +154,12 @@
     <p class="help">{t("watermarkHint")}</p>
     <div class="row">
       {@render picker(t("changeWatermark"))}
-      <button type="button" onclick={() => setWatermark(undefined)}
-        >{t("removeWatermark")}</button
+      <button
+        type="button"
+        onclick={() => {
+          setWatermark(undefined);
+          onchange();
+        }}>{t("removeWatermark")}</button
       >
     </div>
   {:else}
@@ -162,7 +170,13 @@
   {/if}
 </fieldset>
 
-<button type="button" onclick={resetSettings}>{t("resetSettings")}</button>
+<button
+  type="button"
+  onclick={() => {
+    resetSettings();
+    onchange();
+  }}>{t("resetSettings")}</button
+>
 <p class="help">{t("settingsSaved")}</p>
 
 <style>

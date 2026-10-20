@@ -2,6 +2,8 @@
   import { errorMessage, t } from "../lib/i18n.svelte.ts";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
+  import UndoRedo from "./UndoRedo.svelte";
+  import { History } from "../lib/history.svelte.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -21,6 +23,7 @@
   import {
     currentWatermark,
     settings,
+    trackSettings,
     watermark,
   } from "../lib/settings.svelte.ts";
 
@@ -42,6 +45,13 @@
   let detectionFailed = $state(false);
   let exporting = $state(false);
   const shown = $derived(visible(faces, settings.threshold));
+
+  const history = new History();
+  trackSettings(history);
+  history.track(
+    () => faces,
+    (v) => (faces = v),
+  );
 
   $effect(() => {
     let b: ImageBitmap | undefined;
@@ -67,11 +77,14 @@
           { image: copy, threshold: MIN_THRESHOLD },
           { transfer: [copy], signal: controller.signal },
         );
-        if (!stale)
+        if (!stale) {
           faces = [
             ...faces.filter((f) => f.manual),
             ...found.map(fromDetection),
           ];
+          // Undoing a mask drawn before detection ended would also drop the detected ones.
+          history.clear();
+        }
       } catch (e) {
         if (stale) return;
         detectionFailed = true;
@@ -127,11 +140,13 @@
         }}
         onchange={(id, box) => editFace(faces, id, box)}
         onremove={(id) => (faces = faces.filter((f) => f.id !== id))}
+        oncommit={() => history.commit()}
       />
     {/if}
   </section>
   <aside>
-    <Settings />
+    <UndoRedo {history} />
+    <Settings onchange={() => history.commit()} />
     <button
       type="button"
       class="primary"

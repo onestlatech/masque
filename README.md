@@ -2,7 +2,7 @@
 
 Hide faces in photos and videos of demonstrations, parties, or any other event. Masque runs entirely in your browser: files are never uploaded, and once loaded the app keeps working offline and can be installed on a phone's home screen.
 
-Drop several photos to process them together and download one ZIP. In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export, and when detection misses a face or fails, dragging across it adds a mask by hand.
+Drop several photos to process them together and download one ZIP. In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export, and when detection misses a face or fails, dragging across it adds a mask by hand. Ctrl+Z (⌘Z on Apple devices) undoes edits and setting changes.
 
 A watermark, such as a logo, can be added to photos and videos and dragged into place.
 

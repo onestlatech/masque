@@ -3,6 +3,8 @@
   import { onMount, untrack } from "svelte";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
+  import UndoRedo from "./UndoRedo.svelte";
+  import { History } from "../lib/history.svelte.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -23,6 +25,7 @@
   import {
     currentWatermark,
     settings,
+    trackSettings,
     watermark,
   } from "../lib/settings.svelte.ts";
 
@@ -54,6 +57,9 @@
   let bitmap = $state.raw<ImageBitmap>();
   let exporting = $state(false);
 
+  const history = new History();
+  trackSettings(history);
+
   const done = $derived(items.filter((i) => i.status !== "waiting").length);
   const item = $derived(items[current]);
 
@@ -75,6 +81,14 @@
           if (stopped) return;
           it.faces = found.map(fromDetection);
           it.status = "ready";
+          // Undoing shows the photo it applies to.
+          history.track(
+            () => it.faces,
+            (v) => {
+              current = items.indexOf(it);
+              it.faces = v;
+            },
+          );
         } catch {
           it.status = "error";
         } finally {
@@ -183,12 +197,14 @@
           onchange={(id, box) => editFace(item.faces, id, box)}
           onremove={(id) =>
             (item.faces = item.faces.filter((f) => f.id !== id))}
+          oncommit={() => history.commit()}
         />
       {/key}
     {/if}
   </section>
   <aside>
-    <Settings />
+    <UndoRedo {history} />
+    <Settings onchange={() => history.commit()} />
     <button
       type="button"
       class="primary"

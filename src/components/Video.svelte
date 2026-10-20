@@ -4,6 +4,8 @@
   import Editor from "./Editor.svelte";
   import Progress from "./Progress.svelte";
   import Settings from "./Settings.svelte";
+  import UndoRedo from "./UndoRedo.svelte";
+  import { History } from "../lib/history.svelte.ts";
   import type { Box } from "../lib/anonymize/render.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import type { Face } from "../lib/faces.ts";
@@ -12,6 +14,7 @@
   import {
     currentWatermark,
     settings,
+    trackSettings,
     watermark,
   } from "../lib/settings.svelte.ts";
   import {
@@ -47,6 +50,18 @@
     fraction: number;
     controller: AbortController;
   }>();
+
+  const history = new History();
+  trackSettings(history);
+  /** Restored with the tracks, so that undoing a threshold change does not rebuild them. */
+  let builtFor: number | undefined;
+  const trackedTracks = history.track(
+    () => ({ tracks, builtFor }),
+    (v) => {
+      tracks = v.tracks;
+      builtFor = v.builtFor;
+    },
+  );
 
   const last = $derived(analysis ? analysis.timestamps.length - 1 : 0);
   const selectedTrack = $derived(tracks.find((t) => t.id === selected));
@@ -107,13 +122,16 @@
 
   // Automatic tracks follow the threshold; tracks the user touched are kept as they are.
   $effect(() => {
-    if (!analysis) return;
+    if (!analysis || settings.threshold === builtFor) return;
+    const first = builtFor === undefined;
+    builtFor = settings.threshold;
     const auto = buildTracks(
       analysis.detections,
-      settings.threshold,
+      builtFor,
       trackerOptions(analysis.fps),
     );
     tracks = [...untrack(() => tracks.filter((t) => t.manual)), ...auto];
+    if (first) trackedTracks.rebase();
   });
 
   $effect(() => {
@@ -206,6 +224,7 @@
             box,
           )}
         onremove={(id) => (tracks = tracks.filter((t) => t.id !== id))}
+        oncommit={() => history.commit()}
       />
     {/if}
     {#if analysis}
@@ -236,15 +255,17 @@
         >
         <button
           type="button"
-          onclick={() =>
-            (selectedTrack.start = Math.min(shownFrame, selectedTrack.end))}
-          >{t("startsHere")}</button
+          onclick={() => {
+            selectedTrack.start = Math.min(shownFrame, selectedTrack.end);
+            history.commit();
+          }}>{t("startsHere")}</button
         >
         <button
           type="button"
-          onclick={() =>
-            (selectedTrack.end = Math.max(shownFrame, selectedTrack.start))}
-          >{t("endsHere")}</button
+          onclick={() => {
+            selectedTrack.end = Math.max(shownFrame, selectedTrack.start);
+            history.commit();
+          }}>{t("endsHere")}</button
         >
       </div>
     {/if}
@@ -257,9 +278,14 @@
         oncancel={() => task?.controller.abort()}
       />
     {/if}
-    <Settings />
+    <UndoRedo {history} />
+    <Settings onchange={() => history.commit()} />
     <label class="audio">
-      <input type="checkbox" bind:checked={settings.discardAudio} />
+      <input
+        type="checkbox"
+        bind:checked={settings.discardAudio}
+        onchange={() => history.commit()}
+      />
       {t("removeSound")}
     </label>
     <button

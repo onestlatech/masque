@@ -161,3 +161,28 @@ test("removes a mask with its cross", async ({ page }) => {
     page.getByRole("button", { name: "Remove mask", exact: true }),
   ).toHaveCount(0);
 });
+
+test("undoes and redoes edits", async ({ page }) => {
+  const masks = page.locator("[data-box]");
+  const count = await masks.count();
+  const undo = page.getByRole("button", { name: "Undo" });
+  await expect(undo).toBeDisabled();
+
+  await page.locator("details:not(.credits) > summary").click();
+  await page
+    .getByRole("button", { name: "Remove mask 1", exact: true })
+    .click();
+  await page.getByLabel("Style").selectOption("blur");
+  await expect(masks).toHaveCount(count - 1);
+
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.getByLabel("Style")).toHaveValue("solid");
+  await undo.click();
+  await expect(masks).toHaveCount(count);
+  await expect(undo).toBeDisabled();
+
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await expect(masks).toHaveCount(count - 1);
+  await page.getByRole("button", { name: "Redo" }).click();
+  await expect(page.getByLabel("Style")).toHaveValue("blur");
+});

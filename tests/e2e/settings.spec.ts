@@ -50,6 +50,31 @@ const previewed = (page: Page, points: Point[]) =>
       points,
     );
 
+/** An opaque red square. */
+async function addWatermark(page: Page) {
+  const png = await page.evaluate(async () => {
+    const ctx = new OffscreenCanvas(100, 100).getContext("2d")!;
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(0, 0, 100, 100);
+    return [
+      ...new Uint8Array(await (await ctx.canvas.convertToBlob()).arrayBuffer()),
+    ];
+  });
+  await page.getByLabel("Add an image…").setInputFiles({
+    name: "logo.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(png),
+  });
+  await page.getByLabel("Opacity").fill("1");
+}
+
+// city.jpg is 800 × 564: the 113 px watermark sits 17 px from the corner.
+const corners: Point[] = [
+  [726, 490],
+  [73, 73],
+];
+const red = ([r, g, b]: number[]) => r > 200 && g < 50 && b < 50;
+
 test("remembers settings until they are reset", async ({ page }) => {
   await page.goto("/");
   await open(page);
@@ -81,26 +106,7 @@ test("watermarks photos where the user drags it", async ({ page }) => {
   await page.goto("/");
   await open(page);
   await detected(page);
-  const png = await page.evaluate(async () => {
-    const ctx = new OffscreenCanvas(100, 100).getContext("2d")!;
-    ctx.fillStyle = "#f00";
-    ctx.fillRect(0, 0, 100, 100);
-    return [
-      ...new Uint8Array(await (await ctx.canvas.convertToBlob()).arrayBuffer()),
-    ];
-  });
-  await page.getByLabel("Add an image…").setInputFiles({
-    name: "logo.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(png),
-  });
-  await page.getByLabel("Opacity").fill("1");
-  // city.jpg is 800 × 564: the 113 px watermark sits 17 px from the corner.
-  const corners: Point[] = [
-    [726, 490],
-    [73, 73],
-  ];
-  const red = ([r, g, b]: number[]) => r > 200 && g < 50 && b < 50;
+  await addWatermark(page);
   expect((await exported(page, corners)).map(red)).toEqual([true, false]);
 
   const masks = await page.locator("[data-box]").count();
@@ -123,4 +129,32 @@ test("watermarks photos where the user drags it", async ({ page }) => {
   await expect
     .poll(async () => (await previewed(page, corners)).map(red))
     .toEqual([false, true]);
+});
+
+test("undoes watermark changes, reset included", async ({ page }) => {
+  await page.goto("/");
+  await open(page);
+  await detected(page);
+  await addWatermark(page);
+  const watermarked = () =>
+    expect
+      .poll(async () => red((await previewed(page, corners))[0]))
+      .toBe(true);
+  await watermarked();
+
+  await page.getByRole("button", { name: "Remove", exact: true }).click();
+  await expect(page.getByRole("img", { name: "Watermark image" })).toBeHidden();
+  await page.keyboard.press("ControlOrMeta+z");
+  await watermarked();
+
+  await page.getByRole("button", { name: "Reset settings" }).click();
+  await expect(page.getByRole("img", { name: "Watermark image" })).toBeHidden();
+  await page.keyboard.press("ControlOrMeta+z");
+  await watermarked();
+
+  await page.reload();
+  await open(page);
+  await expect(
+    page.getByRole("img", { name: "Watermark image" }),
+  ).toBeVisible();
 });

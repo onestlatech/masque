@@ -1,4 +1,5 @@
 import { defaultMaskOptions, type MaskOptions } from "./anonymize/render.ts";
+import type { History } from "./history.svelte.ts";
 import {
   defaultPlacement,
   type Placement,
@@ -71,23 +72,25 @@ const MAX_WATERMARK = 2048;
 const WATERMARK_KEY = "watermark";
 let generation = 0;
 
+async function decode(image: Blob): Promise<ImageBitmap> {
+  const bitmap = await createImageBitmap(image);
+  const k = MAX_WATERMARK / Math.max(bitmap.width, bitmap.height);
+  if (k >= 1) return bitmap;
+  try {
+    return await createImageBitmap(bitmap, {
+      resizeWidth: Math.max(1, Math.round(bitmap.width * k)),
+      resizeHeight: Math.max(1, Math.round(bitmap.height * k)),
+      resizeQuality: "high",
+    });
+  } finally {
+    bitmap.close();
+  }
+}
+
 /** Rejects when the browser cannot decode the image. */
 export async function setWatermark(image: Blob | undefined, save = true) {
   const current = ++generation;
-  let bitmap: ImageBitmap | undefined;
-  if (image) {
-    bitmap = await createImageBitmap(image);
-    const k = MAX_WATERMARK / Math.max(bitmap.width, bitmap.height);
-    if (k < 1) {
-      const large = bitmap;
-      bitmap = await createImageBitmap(large, {
-        resizeWidth: Math.max(1, Math.round(large.width * k)),
-        resizeHeight: Math.max(1, Math.round(large.height * k)),
-        resizeQuality: "high",
-      });
-      large.close();
-    }
-  }
+  const bitmap = image && (await decode(image));
   if (current !== generation) return bitmap?.close();
   watermark.bitmap?.close();
   watermark.image = image;
@@ -109,6 +112,30 @@ async function persist(image: Blob | undefined, current: number) {
   } catch {
     // Not remembered; the watermark is gone next time.
   }
+}
+
+/** Swaps the image at once, so that history sees it restored; the bitmap follows once decoded. */
+async function restoreWatermark(image: Blob | undefined) {
+  watermark.image = image;
+  try {
+    await setWatermark(image);
+  } catch {
+    // It decoded before; nothing else to fall back to.
+  }
+}
+
+/** Makes settings, the watermark image included, part of the history. */
+export async function trackSettings(history: History) {
+  const tracked = history.track(
+    () => ({ settings, image: watermark.image }),
+    (v) => {
+      Object.assign(settings, v.settings);
+      if (v.image !== watermark.image) restoreWatermark(v.image);
+    },
+  );
+  // Otherwise undoing the first step would delete the stored watermark.
+  await watermarkLoaded;
+  tracked.rebase();
 }
 
 export const currentWatermark = (): Watermark | undefined =>
@@ -156,4 +183,4 @@ async function loadWatermark() {
   }
 }
 
-loadWatermark();
+const watermarkLoaded = loadWatermark();

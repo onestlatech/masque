@@ -23,6 +23,7 @@
     onadd,
     onchange,
     onremove,
+    oncommit,
   }: {
     bitmap: ImageBitmap;
     faces: Face[];
@@ -34,6 +35,8 @@
     onadd: (box: Box) => number;
     onchange: (id: number, box: Box) => void;
     onremove: (id: number) => void;
+    /** A gesture or a removal is over: time to record an undo step. */
+    oncommit: () => void;
   } = $props();
 
   const HANDLE = 12; // CSS pixels
@@ -196,9 +199,16 @@
     else if (d) onchange(d.id, d.orig);
   }
 
+  function pointerup() {
+    if (!drag) return;
+    drag = undefined;
+    oncommit();
+  }
+
   function remove(id: number) {
     if (selected === id) selected = undefined;
     onremove(id);
+    oncommit();
   }
 
   function keydown(e: KeyboardEvent) {
@@ -222,7 +232,7 @@
     aria-label={t("editorLabel")}
     onpointerdown={pointerdown}
     onpointermove={pointermove}
-    onpointerup={() => (drag = undefined)}
+    onpointerup={pointerup}
     onpointercancel={cancel}
     style:cursor={overWatermark ? "move" : undefined}
     onpointerleave={(e) => {
