@@ -127,7 +127,8 @@ test("emoji masks keep the face covered outside the glyph", async ({
       [...ctx.getImageData(256, 256, 1, 1).data],
     ];
   }, bytes.toString("base64"));
-  expect(corner).toEqual([0, 0, 0, 255]);
+  // 🙂's default background color, #ffcf32.
+  expect(corner).toEqual([255, 207, 50, 255]);
   // Yellow, whatever the platform's emoji font.
   expect(center[0]).toBeGreaterThan(200);
   expect(center[2]).toBeLessThan(120);

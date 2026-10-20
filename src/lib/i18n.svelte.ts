@@ -18,6 +18,8 @@ const en = {
   solid: "Solid (safest)",
   emoji: "Emoji",
   pickEmoji: "Emoji to use",
+  color: "Color",
+  emojiColor: "Background color",
   mosaic: "Mosaic",
   blur: "Blur",
   weakWarning:
@@ -117,6 +119,8 @@ const fr: typeof en = {
   solid: "Plein (le plus sûr)",
   emoji: "Émoji",
   pickEmoji: "Émoji à utiliser",
+  color: "Couleur",
+  emojiColor: "Couleur de fond",
   mosaic: "Mosaïque",
   blur: "Flou",
   weakWarning:

@@ -83,3 +83,13 @@ test("rectangular masks are skipped inside rectangles", () => {
   );
   expect(ctx.rect).toHaveBeenCalledTimes(1);
 });
+
+test("solid masks use the chosen color", () => {
+  const ctx = mockContext();
+  applyMasks(
+    ctx as unknown as OffscreenCanvasRenderingContext2D,
+    [{ x1: 400, y1: 400, x2: 500, y2: 500 }],
+    { ...defaultMaskOptions, color: "#ff0000" },
+  );
+  expect(ctx).toHaveProperty("fillStyle", "#ff0000");
+});

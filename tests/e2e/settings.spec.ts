@@ -27,3 +27,11 @@ test("remembers settings until they are reset", async ({ page }) => {
   await open(page);
   await expect(page.getByLabel("Style")).toHaveValue("solid");
 });
+
+test("an emoji comes with a matching background color", async ({ page }) => {
+  await page.goto("/");
+  await open(page);
+  await page.getByLabel("Style").selectOption("emoji");
+  await page.getByText("🐼", { exact: true }).click();
+  await expect(page.getByLabel("Background color")).toHaveValue("#edecec");
+});

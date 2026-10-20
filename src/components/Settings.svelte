@@ -1,15 +1,10 @@
 <script lang="ts">
   import { formatNumber, t } from "../lib/i18n.svelte.ts";
+  import { EMOJIS } from "../lib/anonymize/emojis.ts";
   import { MIN_THRESHOLD } from "../lib/faces.ts";
   import { resetSettings, settings } from "../lib/settings.svelte.ts";
 
   const options = $derived(settings.options);
-
-  // First, the ones round in Apple and Noto fonts alike: other shapes leave black around them.
-  const EMOJIS = [
-    ..."🙂😷😍😡🌝⚽🙃😉😀😃😄😁😆😊😌😗🥺😐😑😶😏😒🙄🤨😬😮😯😲😳😦😧😨😟😕🙁😖😣😞😩😫😠😵🥴🤢🤤🌚🌕🏀🎱",
-    ..."😎🤓🧐🥸😋😢😭🤬😅🤕😂🤣😇🥰😘😙😚😛😜🤪😝🤑🤗🤭🫢🫣🤫🤔🫡🤐🫥😴😪🤒🤧🥵🥶🤯🤠🥳😤😱😰😥😓🥱😈👿💀👹👺🤡👻👽👾🤖🎃😺😸😹😻😼😽🙀😿😾🙈🙉🙊🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🦄🌞",
-  ];
 </script>
 
 <fieldset>
@@ -24,23 +19,33 @@
       <option value="blur">{t("blur")}</option>
     </select>
   </label>
-  {#if options.mode === "emoji"}
+  {#if options.mode === "solid"}
+    <label class="inline">
+      <input type="color" bind:value={options.color} />
+      {t("color")}
+    </label>
+  {:else if options.mode === "emoji"}
     <fieldset class="emojis">
       <legend>{t("pickEmoji")}</legend>
       <div>
-        {#each EMOJIS as emoji (emoji)}
+        {#each Object.entries(EMOJIS) as [emoji, color] (emoji)}
           <label>
             <input
               type="radio"
               name="emoji"
               value={emoji}
               bind:group={options.emoji}
+              onchange={() => (options.emojiColor = color)}
             />
             <span>{emoji}</span>
           </label>
         {/each}
       </div>
     </fieldset>
+    <label class="inline">
+      <input type="color" bind:value={options.emojiColor} />
+      {t("emojiColor")}
+    </label>
   {/if}
   {#if options.mode === "mosaic" || options.mode === "blur"}
     <p class="warning" role="note">{t("weakWarning")}</p>
@@ -116,6 +121,12 @@
 
   label.inline {
     display: flex;
+  }
+
+  input[type="color"] {
+    width: 3rem;
+    height: 1.75rem;
+    padding: 0;
   }
 
   .emojis {

@@ -1,10 +1,15 @@
 import type { Rect } from "../detect/tiling.ts";
+import { EMOJIS } from "./emojis.ts";
 
 export type Mode = "solid" | "emoji" | "mosaic" | "blur";
 
 export interface MaskOptions {
   mode: Mode;
+  /** CSS color of solid masks. */
+  color: string;
   emoji: string;
+  /** Fills what the emoji leaves uncovered. */
+  emojiColor: string;
   /** deface's --mask-scale: 1.3 grows each side by 30% of the box size. */
   maskScale: number;
   ellipse: boolean;
@@ -12,7 +17,9 @@ export interface MaskOptions {
 
 export const defaultMaskOptions: MaskOptions = {
   mode: "solid",
+  color: "#000000",
   emoji: "🙂",
+  emojiColor: EMOJIS["🙂"],
   maskScale: 1.3,
   ellipse: true,
 };
@@ -182,7 +189,8 @@ export function applyMasks(
 
     if (options.mode === "solid" || options.mode === "emoji") {
       // Under the emoji, it hides what the glyph's transparent edges and the rectangle's corners would show.
-      ctx.fillStyle = "#000";
+      ctx.fillStyle =
+        options.mode === "emoji" ? options.emojiColor : options.color;
       ctx.fillRect(r.x, r.y, r.width, r.height);
       const sprite = options.mode === "emoji" && emojiCanvas(options.emoji);
       if (sprite) ctx.drawImage(sprite, e.x1, e.y1, e.x2 - e.x1, e.y2 - e.y1);
