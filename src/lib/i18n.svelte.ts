@@ -27,6 +27,8 @@ const en = {
     "Lower values catch more faces, along with more false positives.",
   maskSize: "Mask size",
   oval: "Oval masks",
+  resetSettings: "Reset settings",
+  settingsSaved: "Settings are saved on this device only.",
   editorLabel:
     "Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it.",
   masks: (n: number) => `${n} ${n === 1 ? "mask" : "masks"}`,
@@ -124,6 +126,8 @@ const fr: typeof en = {
     "Une valeur basse détecte plus de visages, mais aussi plus de faux positifs.",
   maskSize: "Taille des masques",
   oval: "Masques ovales",
+  resetSettings: "Réinitialiser les réglages",
+  settingsSaved: "Les réglages sont enregistrés sur cet appareil uniquement.",
   editorLabel:
     "Image aux visages masqués. Faites glisser pour ajouter un masque ; sélectionnez un masque pour le déplacer, le redimensionner par son coin ou le supprimer.",
   masks: (n) => `${n} ${n > 1 ? "masques" : "masque"}`,

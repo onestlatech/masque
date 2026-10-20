@@ -4,11 +4,12 @@
   import Editor from "./Editor.svelte";
   import Progress from "./Progress.svelte";
   import Settings from "./Settings.svelte";
-  import type { Box, MaskOptions } from "../lib/anonymize/render.ts";
+  import type { Box } from "../lib/anonymize/render.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import type { Face } from "../lib/faces.ts";
   import { download } from "../lib/media/image.ts";
   import type { Analysis } from "../lib/media/video.ts";
+  import { settings } from "../lib/settings.svelte.ts";
   import {
     boxAt,
     buildTracks,
@@ -21,15 +22,11 @@
   let {
     file,
     worker,
-    options = $bindable(),
-    threshold = $bindable(),
     onerror,
     onclose,
   }: {
     file: File;
     worker: Engine;
-    options: MaskOptions;
-    threshold: number;
     onerror: (message: string) => void;
     onclose: () => void;
   } = $props();
@@ -41,7 +38,6 @@
   let bitmap = $state.raw<ImageBitmap>();
   let bitmapFrame = $state<number>();
   let selected = $state<number>();
-  let discardAudio = $state(false);
   let task = $state<{
     label: string;
     fraction: number;
@@ -110,7 +106,7 @@
     if (!analysis) return;
     const auto = buildTracks(
       analysis.detections,
-      threshold,
+      settings.threshold,
       trackerOptions(analysis.fps),
     );
     tracks = [...untrack(() => tracks.filter((t) => t.manual)), ...auto];
@@ -168,8 +164,8 @@
             video: video!,
             timestamps: analysis!.timestamps,
             tracks: $state.snapshot(tracks),
-            options: $state.snapshot(options),
-            discardAudio,
+            options: $state.snapshot(settings.options),
+            discardAudio: settings.discardAudio,
           },
           o,
         ),
@@ -190,7 +186,7 @@
       <Editor
         {bitmap}
         {faces}
-        {options}
+        options={settings.options}
         bind:selected
         onadd={add}
         onchange={(id, box) =>
@@ -251,9 +247,9 @@
         oncancel={() => task?.controller.abort()}
       />
     {/if}
-    <Settings bind:options bind:threshold />
+    <Settings />
     <label class="audio">
-      <input type="checkbox" bind:checked={discardAudio} />
+      <input type="checkbox" bind:checked={settings.discardAudio} />
       {t("removeSound")}
     </label>
     <button

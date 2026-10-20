@@ -1,12 +1,9 @@
 <script lang="ts">
   import { formatNumber, t } from "../lib/i18n.svelte.ts";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
   import { MIN_THRESHOLD } from "../lib/faces.ts";
+  import { resetSettings, settings } from "../lib/settings.svelte.ts";
 
-  let {
-    options = $bindable(),
-    threshold = $bindable(),
-  }: { options: MaskOptions; threshold: number } = $props();
+  const options = $derived(settings.options);
 
   // First, the ones round in Apple and Noto fonts alike: other shapes leave black around them.
   const EMOJIS = [
@@ -56,10 +53,10 @@
       min={MIN_THRESHOLD}
       max="0.9"
       step="0.05"
-      bind:value={threshold}
+      bind:value={settings.threshold}
       aria-describedby="threshold-help"
     />
-    <output>{formatNumber(threshold, 2)}</output>
+    <output>{formatNumber(settings.threshold, 2)}</output>
   </label>
   <p id="threshold-help" class="help">{t("thresholdHelp")}</p>
 
@@ -79,6 +76,9 @@
     <input type="checkbox" bind:checked={options.ellipse} />
     {t("oval")}
   </label>
+
+  <button type="button" onclick={resetSettings}>{t("resetSettings")}</button>
+  <p class="help">{t("settingsSaved")}</p>
 </fieldset>
 
 <style>

@@ -3,7 +3,6 @@
   import { onMount, untrack } from "svelte";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -21,18 +20,15 @@
     outputType,
   } from "../lib/media/image.ts";
   import { zip } from "../lib/media/zip.ts";
+  import { settings } from "../lib/settings.svelte.ts";
 
   let {
     files,
     worker,
-    options = $bindable(),
-    threshold = $bindable(),
     onclose,
   }: {
     files: File[];
     worker: Engine;
-    options: MaskOptions;
-    threshold: number;
     onclose: () => void;
   } = $props();
 
@@ -120,8 +116,8 @@
         try {
           const blob = await exportImage(
             b,
-            $state.snapshot(visible(it.faces, threshold)),
-            $state.snapshot(options),
+            $state.snapshot(visible(it.faces, settings.threshold)),
+            $state.snapshot(settings.options),
             type,
           );
           // Numbered in input order; original names may identify the photographer, place or date.
@@ -154,7 +150,10 @@
             <small>
               {#if it.status === "waiting"}…{:else if it.status === "error"}{t(
                   "unreadable",
-                )}{:else}{t("masks", visible(it.faces, threshold).length)}{/if}
+                )}{:else}{t(
+                  "masks",
+                  visible(it.faces, settings.threshold).length,
+                )}{/if}
             </small>
           </button>
         </li>
@@ -167,8 +166,8 @@
       {#key item}
         <Editor
           {bitmap}
-          faces={visible(item.faces, threshold)}
-          {options}
+          faces={visible(item.faces, settings.threshold)}
+          options={settings.options}
           onadd={(box) => {
             const face = manualFace(box);
             item.faces.push(face);
@@ -182,7 +181,7 @@
     {/if}
   </section>
   <aside>
-    <Settings bind:options bind:threshold />
+    <Settings />
     <button
       type="button"
       class="primary"

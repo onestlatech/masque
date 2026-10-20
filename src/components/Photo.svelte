@@ -2,7 +2,6 @@
   import { errorMessage, t } from "../lib/i18n.svelte.ts";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -19,19 +18,16 @@
     outputName,
     outputType,
   } from "../lib/media/image.ts";
+  import { settings } from "../lib/settings.svelte.ts";
 
   let {
     file,
     worker,
-    options = $bindable(),
-    threshold = $bindable(),
     onerror,
     onclose,
   }: {
     file: File;
     worker: Engine;
-    options: MaskOptions;
-    threshold: number;
     onerror: (message: string) => void;
     onclose: () => void;
   } = $props();
@@ -41,7 +37,7 @@
   let detecting = $state(true);
   let detectionFailed = $state(false);
   let exporting = $state(false);
-  const shown = $derived(visible(faces, threshold));
+  const shown = $derived(visible(faces, settings.threshold));
 
   $effect(() => {
     let b: ImageBitmap | undefined;
@@ -95,7 +91,7 @@
       const blob = await exportImage(
         bitmap!,
         $state.snapshot(shown),
-        $state.snapshot(options),
+        $state.snapshot(settings.options),
         type,
       );
       download(blob, outputName(type));
@@ -116,7 +112,7 @@
       <Editor
         {bitmap}
         faces={shown}
-        {options}
+        options={settings.options}
         onadd={(box) => {
           const face = manualFace(box);
           faces.push(face);
@@ -128,7 +124,7 @@
     {/if}
   </section>
   <aside>
-    <Settings bind:options bind:threshold />
+    <Settings />
     <button
       type="button"
       class="primary"
