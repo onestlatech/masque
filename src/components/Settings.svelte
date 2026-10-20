@@ -1,11 +1,49 @@
 <script lang="ts">
-  import { formatNumber, t } from "../lib/i18n.svelte.ts";
+  import { formatNumber, formatPercent, t } from "../lib/i18n.svelte.ts";
   import { EMOJIS } from "../lib/anonymize/emojis.ts";
   import { MIN_THRESHOLD } from "../lib/faces.ts";
-  import { resetSettings, settings } from "../lib/settings.svelte.ts";
+  import {
+    resetSettings,
+    setWatermark,
+    settings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
   const options = $derived(settings.options);
+  let thumbnail = $state<string>();
+  let watermarkError = $state<string>();
+
+  $effect(() => {
+    if (!watermark.image) return;
+    const url = URL.createObjectURL(watermark.image);
+    thumbnail = url;
+    return () => URL.revokeObjectURL(url);
+  });
+
+  async function pickWatermark(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      // Without the file name, which may identify its author.
+      await setWatermark(new Blob([file], { type: file.type }));
+      watermarkError = undefined;
+    } catch {
+      watermarkError = t("cannotOpen", file.name);
+    }
+  }
 </script>
+
+{#snippet picker(label: string)}
+  <label class="file">
+    <input
+      type="file"
+      accept="image/*"
+      onchange={(e) => pickWatermark(e.currentTarget)}
+    />
+    {label}
+  </label>
+{/snippet}
 
 <fieldset>
   <legend>{t("masking")}</legend>
@@ -81,10 +119,51 @@
     <input type="checkbox" bind:checked={options.ellipse} />
     {t("oval")}
   </label>
-
-  <button type="button" onclick={resetSettings}>{t("resetSettings")}</button>
-  <p class="help">{t("settingsSaved")}</p>
 </fieldset>
+
+<fieldset>
+  <legend>{t("watermark")}</legend>
+  {#if watermark.bitmap}
+    <img src={thumbnail} alt={t("watermarkImage")} />
+    <label>
+      {t("watermarkSize")}
+      <input
+        type="range"
+        min="0.05"
+        max="0.5"
+        step="0.01"
+        bind:value={settings.watermark.size}
+      />
+      <output>{formatPercent(settings.watermark.size)}</output>
+    </label>
+    <label>
+      {t("opacity")}
+      <input
+        type="range"
+        min="0.1"
+        max="1"
+        step="0.05"
+        bind:value={settings.watermark.opacity}
+      />
+      <output>{formatPercent(settings.watermark.opacity)}</output>
+    </label>
+    <p class="help">{t("watermarkHint")}</p>
+    <div class="row">
+      {@render picker(t("changeWatermark"))}
+      <button type="button" onclick={() => setWatermark(undefined)}
+        >{t("removeWatermark")}</button
+      >
+    </div>
+  {:else}
+    {@render picker(t("addWatermark"))}
+  {/if}
+  {#if watermarkError}
+    <p class="error" role="alert">{watermarkError}</p>
+  {/if}
+</fieldset>
+
+<button type="button" onclick={resetSettings}>{t("resetSettings")}</button>
+<p class="help">{t("settingsSaved")}</p>
 
 <style>
   fieldset {
@@ -185,5 +264,48 @@
     margin: 0;
     font-size: 0.875rem;
     color: var(--muted);
+  }
+
+  .error {
+    margin: 0;
+    color: var(--danger);
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 6rem;
+    margin: 0 auto;
+    object-fit: contain;
+    /* Shows transparent watermarks on both themes. */
+    background: repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 1rem 1rem;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .row > * {
+    flex: 1;
+  }
+
+  /* A button that opens the file picker. */
+  label.file {
+    display: block;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--fg);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  label.file:focus-within {
+    outline: 2px solid var(--accent);
+  }
+
+  label.file input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
   }
 </style>

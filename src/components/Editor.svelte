@@ -6,11 +6,19 @@
     type MaskOptions,
   } from "../lib/anonymize/render.ts";
   import type { Face } from "../lib/faces.ts";
+  import {
+    drawWatermark,
+    moveWatermark,
+    watermarkRect,
+    type Placement,
+  } from "../lib/watermark.ts";
 
   let {
     bitmap,
     faces,
     options,
+    watermark,
+    placement = $bindable(),
     selected = $bindable(),
     onadd,
     onchange,
@@ -19,6 +27,8 @@
     bitmap: ImageBitmap;
     faces: Face[];
     options: MaskOptions;
+    watermark?: ImageBitmap;
+    placement: Placement;
     selected?: number;
     /** Returns the new mask's id. */
     onadd: (box: Box) => number;
@@ -30,12 +40,14 @@
 
   let canvas: HTMLCanvasElement;
   let hovered = $state<number>();
+  let overWatermark = $state(false);
   /** Masks under another one are neither drawn nor outlined, so pointers must not grab them. */
   let drawn: boolean[] = [];
   let drag:
     | ({ pointer: number; x: number; y: number } & (
         | { kind: "new"; id?: number }
         | { kind: "move" | "resize"; id: number; orig: Box }
+        | { kind: "watermark"; orig: Placement }
       ))
     | undefined;
 
@@ -45,9 +57,18 @@
     const ctx = canvas.getContext("2d")!;
     ctx.drawImage(bitmap, 0, 0);
     drawn = applyMasks(ctx, faces, options, bitmap);
+    if (watermark) drawWatermark(ctx, { image: watermark, placement });
 
     const px = pixelRatio();
     ctx.lineWidth = 2 * px;
+    if (watermark && overWatermark) {
+      const r = watermarkRect(canvas, watermark, placement);
+      ctx.save();
+      ctx.strokeStyle = "#facc15";
+      ctx.setLineDash([6 * px, 4 * px]);
+      ctx.strokeRect(r.x, r.y, r.width, r.height);
+      ctx.restore();
+    }
     for (const [i, f] of faces.entries()) {
       if (!drawn[i] && f.id !== selected) continue;
       ctx.strokeStyle =
@@ -77,6 +98,12 @@
     };
   }
 
+  function hitWatermark(x: number, y: number) {
+    if (!watermark) return false;
+    const r = watermarkRect(canvas, watermark, placement);
+    return x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height;
+  }
+
   function hit(x: number, y: number) {
     // Topmost first: the last drawn box wins.
     for (let i = faces.length - 1; i >= 0; i--) {
@@ -91,6 +118,11 @@
     if (drag && drag.pointer !== e.pointerId) return cancel();
     canvas.setPointerCapture(e.pointerId);
     const { x, y } = point(e);
+    // Drawn over the masks, the watermark catches the pointer first.
+    if (hitWatermark(x, y)) {
+      drag = { kind: "watermark", pointer: e.pointerId, x, y, orig: placement };
+      return;
+    }
     const face = hit(x, y);
     if (!face) {
       selected = undefined;
@@ -114,7 +146,12 @@
     const d = drag;
     const { x, y } = point(e);
     if (!d) {
-      hovered = hit(x, y)?.id;
+      overWatermark = hitWatermark(x, y);
+      hovered = overWatermark ? undefined : hit(x, y)?.id;
+      return;
+    }
+    if (d.kind === "watermark") {
+      placement = moveWatermark(canvas, watermark!, d.orig, x - d.x, y - d.y);
       return;
     }
     if (d.kind === "new") {
@@ -155,7 +192,8 @@
     drag = undefined;
     if (d?.kind === "new") {
       if (d.id !== undefined) remove(d.id);
-    } else if (d) onchange(d.id, d.orig);
+    } else if (d?.kind === "watermark") placement = d.orig;
+    else if (d) onchange(d.id, d.orig);
   }
 
   function remove(id: number) {
@@ -186,7 +224,9 @@
     onpointermove={pointermove}
     onpointerup={() => (drag = undefined)}
     onpointercancel={cancel}
+    style:cursor={overWatermark ? "move" : undefined}
     onpointerleave={(e) => {
+      overWatermark = false;
       if (!(
         e.relatedTarget instanceof Element && e.relatedTarget.closest(".remove")
       ))

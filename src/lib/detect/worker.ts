@@ -3,6 +3,7 @@ import type { MaskOptions } from "../anonymize/render.ts";
 import { MIN_THRESHOLD } from "../faces.ts";
 import { Video, type Analysis, type VideoInfo } from "../media/video.ts";
 import type { Track } from "../track/tracker.ts";
+import type { Watermark } from "../watermark.ts";
 import type { Detection } from "./centerface.ts";
 import { Detector, type Backend } from "./detector.ts";
 
@@ -21,6 +22,7 @@ export interface Requests {
       timestamps: number[];
       tracks: Track[];
       options: MaskOptions;
+      watermark?: Watermark;
       discardAudio: boolean;
     };
     result: File;
@@ -102,6 +104,7 @@ async function handle(
           req.timestamps,
           req.tracks,
           req.options,
+          req.watermark,
           req.discardAudio,
           progress,
           signal,
@@ -135,6 +138,7 @@ addEventListener("message", ({ data }: MessageEvent<Request>) => {
       } satisfies Response);
     } finally {
       if (data.type === "detect") data.image.close();
+      if (data.type === "render") data.watermark?.image.close();
       running.delete(data.id);
     }
   });

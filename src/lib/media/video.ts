@@ -16,6 +16,7 @@ import {
 import { applyMasks, type MaskOptions } from "../anonymize/render.ts";
 import type { Detection } from "../detect/centerface.ts";
 import { boxesAt, type Track } from "../track/tracker.ts";
+import { drawWatermark, type Watermark } from "../watermark.ts";
 import { findBox, zeroTimes } from "./mp4.ts";
 import { outputName } from "./image.ts";
 
@@ -170,6 +171,7 @@ export class Video {
     timestamps: number[],
     tracks: Track[],
     options: MaskOptions,
+    watermark: Watermark | undefined,
     discardAudio: boolean,
     onProgress: Progress,
     signal: AbortSignal,
@@ -241,6 +243,7 @@ export class Video {
               boxesAt(tracks, nearest(timestamps, sample.timestamp + start)),
               options,
             );
+            if (watermark) drawWatermark(ctx, watermark);
             return new VideoSample(
               new VideoFrame(ctx.canvas, {
                 timestamp: sample.microsecondTimestamp,

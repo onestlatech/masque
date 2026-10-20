@@ -9,7 +9,11 @@
   import type { Face } from "../lib/faces.ts";
   import { download } from "../lib/media/image.ts";
   import type { Analysis } from "../lib/media/video.ts";
-  import { settings } from "../lib/settings.svelte.ts";
+  import {
+    currentWatermark,
+    settings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
   import {
     boxAt,
     buildTracks,
@@ -157,6 +161,9 @@
 
   async function save() {
     try {
+      const w = currentWatermark();
+      // The worker closes its copy once done.
+      const copy = w && { ...w, image: await createImageBitmap(w.image) };
       const out = await run(t("exporting"), (o) =>
         worker.call(
           "render",
@@ -165,9 +172,10 @@
             timestamps: analysis!.timestamps,
             tracks: $state.snapshot(tracks),
             options: $state.snapshot(settings.options),
+            watermark: copy,
             discardAudio: settings.discardAudio,
           },
-          o,
+          { ...o, transfer: copy ? [copy.image] : [] },
         ),
       );
       download(out, out.name);
@@ -187,6 +195,8 @@
         {bitmap}
         {faces}
         options={settings.options}
+        watermark={watermark.bitmap}
+        bind:placement={settings.watermark}
         bind:selected
         onadd={add}
         onchange={(id, box) =>

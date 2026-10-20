@@ -20,7 +20,11 @@
     outputType,
   } from "../lib/media/image.ts";
   import { zip } from "../lib/media/zip.ts";
-  import { settings } from "../lib/settings.svelte.ts";
+  import {
+    currentWatermark,
+    settings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
   let {
     files,
@@ -119,6 +123,7 @@
             $state.snapshot(visible(it.faces, settings.threshold)),
             $state.snapshot(settings.options),
             type,
+            currentWatermark(),
           );
           // Numbered in input order; original names may identify the photographer, place or date.
           out[
@@ -168,6 +173,8 @@
           {bitmap}
           faces={visible(item.faces, settings.threshold)}
           options={settings.options}
+          watermark={watermark.bitmap}
+          bind:placement={settings.watermark}
           onadd={(box) => {
             const face = manualFace(box);
             item.faces.push(face);

@@ -18,7 +18,11 @@
     outputName,
     outputType,
   } from "../lib/media/image.ts";
-  import { settings } from "../lib/settings.svelte.ts";
+  import {
+    currentWatermark,
+    settings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
   let {
     file,
@@ -93,6 +97,7 @@
         $state.snapshot(shown),
         $state.snapshot(settings.options),
         type,
+        currentWatermark(),
       );
       download(blob, outputName(type));
     } catch (e) {
@@ -113,6 +118,8 @@
         {bitmap}
         faces={shown}
         options={settings.options}
+        watermark={watermark.bitmap}
+        bind:placement={settings.watermark}
         onadd={(box) => {
           const face = manualFace(box);
           faces.push(face);
