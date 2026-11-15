@@ -23,23 +23,28 @@ const sw = self as unknown as {
   registration: { scope: string };
 };
 
-sw.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(PRECACHE)));
-});
+async function precache() {
+  const cache = await caches.open(CACHE);
+  await cache.addAll(PRECACHE);
+}
 
-sw.addEventListener("activate", (e) => {
-  e.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter((k) => k.startsWith("masque-") && k !== CACHE)
-            .map((k) => caches.delete(k)),
-        ),
-      ),
+async function purge() {
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter((k) => k.startsWith("masque-") && k !== CACHE)
+      .map((k) => caches.delete(k)),
   );
-});
+}
+
+async function respond(request: Request, key: Request | string) {
+  const cache = await caches.open(CACHE);
+  // Servers may send Vary: Origin, and module scripts are requested with an Origin header the precache lacked.
+  return (await cache.match(key, { ignoreVary: true })) ?? fetch(request);
+}
+
+sw.addEventListener("install", (e) => e.waitUntil(precache()));
+sw.addEventListener("activate", (e) => e.waitUntil(purge()));
 
 sw.addEventListener("fetch", (e) => {
   const { request } = e;
@@ -53,13 +58,5 @@ sw.addEventListener("fetch", (e) => {
     request.mode === "navigate"
       ? new URL("./", sw.registration.scope).href
       : request;
-  // Servers may send Vary: Origin, and module scripts are requested with an Origin header the precache lacked.
-  e.respondWith(
-    caches
-      .open(CACHE)
-      .then(
-        async (cache) =>
-          (await cache.match(key, { ignoreVary: true })) ?? fetch(request),
-      ),
-  );
+  e.respondWith(respond(request, key));
 });

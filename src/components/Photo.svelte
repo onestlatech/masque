@@ -47,38 +47,40 @@
     let b: ImageBitmap | undefined;
     let stale = false;
     const controller = new AbortController();
-    loadImage(file).then(
-      async (loaded) => {
-        if (stale) return loaded.close();
-        bitmap = b = loaded;
-        let copy: ImageBitmap | undefined;
-        try {
-          copy = await createImageBitmap(loaded);
-          const found = await worker.call(
-            "detect",
-            { image: copy, threshold: MIN_THRESHOLD },
-            { transfer: [copy], signal: controller.signal },
-          );
-          if (!stale)
-            faces = [
-              ...faces.filter((f) => f.manual),
-              ...found.map(fromDetection),
-            ];
-        } catch (e) {
-          if (stale) return;
-          detectionFailed = true;
-          onerror(t("detectionFailed", errorMessage(e)));
-        } finally {
-          copy?.close();
-          if (!stale) detecting = false;
-        }
-      },
-      () => {
+    (async () => {
+      let loaded: ImageBitmap;
+      try {
+        loaded = await loadImage(file);
+      } catch {
         if (stale) return;
         onerror(t("cannotOpen", file.name));
         onclose();
-      },
-    );
+        return;
+      }
+      if (stale) return loaded.close();
+      bitmap = b = loaded;
+      let copy: ImageBitmap | undefined;
+      try {
+        copy = await createImageBitmap(loaded);
+        const found = await worker.call(
+          "detect",
+          { image: copy, threshold: MIN_THRESHOLD },
+          { transfer: [copy], signal: controller.signal },
+        );
+        if (!stale)
+          faces = [
+            ...faces.filter((f) => f.manual),
+            ...found.map(fromDetection),
+          ];
+      } catch (e) {
+        if (stale) return;
+        detectionFailed = true;
+        onerror(t("detectionFailed", errorMessage(e)));
+      } finally {
+        copy?.close();
+        if (!stale) detecting = false;
+      }
+    })();
     return () => {
       stale = true;
       controller.abort();

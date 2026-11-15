@@ -93,15 +93,15 @@
     bitmap = undefined;
     let b: ImageBitmap | undefined;
     let stale = false;
-    loadImage(file).then(
-      (loaded) => {
+    (async () => {
+      try {
+        const loaded = await loadImage(file);
         if (stale) return loaded.close();
         bitmap = b = loaded;
-      },
-      () => {
+      } catch {
         if (!stale) bitmap = undefined;
-      },
-    );
+      }
+    })();
     return () => {
       stale = true;
       b?.close();
