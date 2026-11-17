@@ -7,6 +7,7 @@
   import { Engine } from "./lib/detect/client.ts";
   import { isVideo } from "./lib/media/image.ts";
   import type { Backend } from "./lib/detect/detector.ts";
+  import { Updater } from "./lib/update.svelte.ts";
   import offensive from "./assets/brand/offensive.png";
 
   const worker = new Engine();
@@ -60,6 +61,7 @@
   let error = $state<string>();
   let files = $state.raw<File[]>([]);
   let offline = $state(false);
+  let updater = $state<Updater>();
 
   navigator.serviceWorker?.ready.then(() => (offline = true));
 
@@ -72,7 +74,9 @@
     // Precaching the model while the detector downloads it makes Chromium's HTTP cache fail one of the two.
     .finally(() => {
       if (import.meta.env.PROD && "serviceWorker" in navigator)
-        navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`);
+        navigator.serviceWorker
+          .register(`${import.meta.env.BASE_URL}sw.js`)
+          .then((r) => (updater = new Updater(navigator.serviceWorker, r)));
     });
 
   function open(selected: File[]) {
@@ -89,6 +93,14 @@
 </script>
 
 <main>
+  <!-- Updating reloads the page, which would discard the open files. -->
+  {#if updater?.available && !files.length}
+    <p class="update" role="status">
+      {t("updateAvailable")}
+      <button onclick={() => updater?.apply()}>{t("update")}</button>
+    </p>
+  {/if}
+
   <header>
     <h1><span class="emoji" aria-hidden="true">🎭</span>Masque</h1>
     <p>{t("tagline")}</p>
@@ -215,6 +227,17 @@
     main {
       --gutter: 1rem;
     }
+  }
+
+  .update {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    align-items: center;
+    justify-content: center;
+    margin: 0 calc(-1 * var(--gutter));
+    padding: 0.75rem var(--gutter);
+    background: var(--tint);
   }
 
   header {

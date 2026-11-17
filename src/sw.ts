@@ -20,7 +20,9 @@ const sw = self as unknown as {
     listener: (e: ExtendableEvent) => void,
   ): void;
   addEventListener(type: "fetch", listener: (e: FetchEvent) => void): void;
+  addEventListener(type: "message", listener: (e: MessageEvent) => void): void;
   registration: { scope: string };
+  skipWaiting(): Promise<void>;
 };
 
 async function precache() {
@@ -45,6 +47,10 @@ async function respond(request: Request, key: Request | string) {
 
 sw.addEventListener("install", (e) => e.waitUntil(precache()));
 sw.addEventListener("activate", (e) => e.waitUntil(purge()));
+// Sent by the update banner: otherwise the new version waits until every tab closes.
+sw.addEventListener("message", (e) => {
+  if (e.data === "skipWaiting") void sw.skipWaiting();
+});
 
 sw.addEventListener("fetch", (e) => {
   const { request } = e;
