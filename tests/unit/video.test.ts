@@ -87,7 +87,15 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 const render = (video: Video, signal = new AbortController().signal) =>
-  video.render([10, 11], [], defaultMaskOptions, true, () => {}, signal);
+  video.render(
+    [10, 11],
+    [],
+    defaultMaskOptions,
+    undefined,
+    true,
+    () => {},
+    signal,
+  );
 
 test("rebased export samples use masks from the source timestamp", async () => {
   const video = await Video.open(new Blob());
@@ -113,6 +121,7 @@ test("rebased export samples use masks from the source timestamp", async () => {
       [10, 11],
       [track],
       defaultMaskOptions,
+      undefined,
       true,
       () => {},
       new AbortController().signal,

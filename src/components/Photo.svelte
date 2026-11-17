@@ -2,7 +2,8 @@
   import { errorMessage, t } from "../lib/i18n.svelte.ts";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
+  import UndoRedo from "./UndoRedo.svelte";
+  import { History } from "../lib/history.svelte.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -19,19 +20,21 @@
     outputName,
     outputType,
   } from "../lib/media/image.ts";
+  import {
+    currentWatermark,
+    settings,
+    trackSettings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
   let {
     file,
     worker,
-    options = $bindable(),
-    threshold = $bindable(),
     onerror,
     onclose,
   }: {
     file: File;
     worker: Engine;
-    options: MaskOptions;
-    threshold: number;
     onerror: (message: string) => void;
     onclose: () => void;
   } = $props();
@@ -41,7 +44,14 @@
   let detecting = $state(true);
   let detectionFailed = $state(false);
   let exporting = $state(false);
-  const shown = $derived(visible(faces, threshold));
+  const shown = $derived(visible(faces, settings.threshold));
+
+  const history = new History();
+  trackSettings(history);
+  history.track(
+    () => faces,
+    (v) => (faces = v),
+  );
 
   $effect(() => {
     let b: ImageBitmap | undefined;
@@ -67,11 +77,14 @@
           { image: copy, threshold: MIN_THRESHOLD },
           { transfer: [copy], signal: controller.signal },
         );
-        if (!stale)
+        if (!stale) {
           faces = [
             ...faces.filter((f) => f.manual),
             ...found.map(fromDetection),
           ];
+          // Undoing a mask drawn before detection ended would also drop the detected ones.
+          history.clear();
+        }
       } catch (e) {
         if (stale) return;
         detectionFailed = true;
@@ -95,8 +108,9 @@
       const blob = await exportImage(
         bitmap!,
         $state.snapshot(shown),
-        $state.snapshot(options),
+        $state.snapshot(settings.options),
         type,
+        currentWatermark(),
       );
       download(blob, outputName(type));
     } catch (e) {
@@ -116,7 +130,9 @@
       <Editor
         {bitmap}
         faces={shown}
-        {options}
+        options={settings.options}
+        watermark={watermark.bitmap}
+        bind:placement={settings.watermark}
         onadd={(box) => {
           const face = manualFace(box);
           faces.push(face);
@@ -124,11 +140,13 @@
         }}
         onchange={(id, box) => editFace(faces, id, box)}
         onremove={(id) => (faces = faces.filter((f) => f.id !== id))}
+        oncommit={() => history.commit()}
       />
     {/if}
   </section>
   <aside>
-    <Settings bind:options bind:threshold />
+    <UndoRedo {history} />
+    <Settings onchange={() => history.commit()} />
     <button
       type="button"
       class="primary"

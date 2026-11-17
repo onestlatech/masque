@@ -3,7 +3,8 @@
   import { onMount, untrack } from "svelte";
   import Editor from "./Editor.svelte";
   import Settings from "./Settings.svelte";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
+  import UndoRedo from "./UndoRedo.svelte";
+  import { History } from "../lib/history.svelte.ts";
   import type { Engine } from "../lib/detect/client.ts";
   import {
     editFace,
@@ -21,18 +22,20 @@
     outputType,
   } from "../lib/media/image.ts";
   import { zip } from "../lib/media/zip.ts";
+  import {
+    currentWatermark,
+    settings,
+    trackSettings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
   let {
     files,
     worker,
-    options = $bindable(),
-    threshold = $bindable(),
     onclose,
   }: {
     files: File[];
     worker: Engine;
-    options: MaskOptions;
-    threshold: number;
     onclose: () => void;
   } = $props();
 
@@ -53,6 +56,9 @@
   let current = $state(0);
   let bitmap = $state.raw<ImageBitmap>();
   let exporting = $state(false);
+
+  const history = new History();
+  trackSettings(history);
 
   const done = $derived(items.filter((i) => i.status !== "waiting").length);
   const item = $derived(items[current]);
@@ -75,6 +81,14 @@
           if (stopped) return;
           it.faces = found.map(fromDetection);
           it.status = "ready";
+          // Undoing shows the photo it applies to.
+          history.track(
+            () => it.faces,
+            (v) => {
+              current = items.indexOf(it);
+              it.faces = v;
+            },
+          );
         } catch {
           it.status = "error";
         } finally {
@@ -120,9 +134,10 @@
         try {
           const blob = await exportImage(
             b,
-            $state.snapshot(visible(it.faces, threshold)),
-            $state.snapshot(options),
+            $state.snapshot(visible(it.faces, settings.threshold)),
+            $state.snapshot(settings.options),
             type,
+            currentWatermark(),
           );
           // Numbered in input order; original names may identify the photographer, place or date.
           out[
@@ -154,7 +169,10 @@
             <small>
               {#if it.status === "waiting"}…{:else if it.status === "error"}{t(
                   "unreadable",
-                )}{:else}{t("masks", visible(it.faces, threshold).length)}{/if}
+                )}{:else}{t(
+                  "masks",
+                  visible(it.faces, settings.threshold).length,
+                )}{/if}
             </small>
           </button>
         </li>
@@ -167,8 +185,10 @@
       {#key item}
         <Editor
           {bitmap}
-          faces={visible(item.faces, threshold)}
-          {options}
+          faces={visible(item.faces, settings.threshold)}
+          options={settings.options}
+          watermark={watermark.bitmap}
+          bind:placement={settings.watermark}
           onadd={(box) => {
             const face = manualFace(box);
             item.faces.push(face);
@@ -177,12 +197,14 @@
           onchange={(id, box) => editFace(item.faces, id, box)}
           onremove={(id) =>
             (item.faces = item.faces.filter((f) => f.id !== id))}
+          oncommit={() => history.commit()}
         />
       {/key}
     {/if}
   </section>
   <aside>
-    <Settings bind:options bind:threshold />
+    <UndoRedo {history} />
+    <Settings onchange={() => history.commit()} />
     <button
       type="button"
       class="primary"

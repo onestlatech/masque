@@ -1,4 +1,5 @@
 import { applyMasks, type Box, type MaskOptions } from "../anonymize/render.ts";
+import { drawWatermark, type Watermark } from "../watermark.ts";
 import { stripJpeg, stripPng } from "./strip.ts";
 
 // iOS WebKit refuses canvases over 4096 × 4096 pixels, and the editor and export draw the whole photo on one.
@@ -31,11 +32,13 @@ export async function exportImage(
   boxes: Box[],
   options: MaskOptions,
   type: string,
+  watermark?: Watermark,
 ): Promise<Blob> {
   const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
   const ctx = canvas.getContext("2d")!;
   ctx.drawImage(bitmap, 0, 0);
   applyMasks(ctx, boxes, options, bitmap);
+  if (watermark) drawWatermark(ctx, watermark);
   const bytes = new Uint8Array(
     await (await canvas.convertToBlob({ type, quality: 0.92 })).arrayBuffer(),
   );

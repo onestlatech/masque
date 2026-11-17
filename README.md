@@ -2,7 +2,9 @@
 
 Hide faces in photos and videos of demonstrations, parties, or any other event. Masque runs entirely in your browser: files are never uploaded, and once loaded the app keeps working offline and can be installed on a phone's home screen.
 
-Drop several photos to process them together and download one ZIP. In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export, and when detection misses a face or fails, dragging across it adds a mask by hand.
+Drop several photos to process them together and download one ZIP. In videos, faces are tracked between frames, so a face the detector misses for a moment stays masked. Every mask can be reviewed and edited before export, and when detection misses a face or fails, dragging across it adds a mask by hand. Ctrl+Z (⌘Z on Apple devices) undoes edits and setting changes.
+
+A watermark, such as a logo, can be added to photos and videos and dragged into place.
 
 Face detection uses the [CenterFace](https://github.com/Star-Clouds/CenterFace) model (MIT), as in [deface](https://github.com/ORB-HD/deface). `public/models/centerface.onnx` is deface's model with dynamic input sizes, produced by `uv run scripts/prepare-model.py`.
 
@@ -14,6 +16,7 @@ Masque is created by [onestla.tech](https://onestla.tech) and [L'Offensive](http
 
 - No backend, no analytics, no third-party requests. A strict Content Security Policy (`connect-src 'self'`) blocks the page from sending data anywhere else.
 - Output files carry no metadata: no EXIF, GPS, or device identifiers in photos; no tags or creation dates in videos. Downloads get random or numbered names, never the original ones.
+- Settings and the watermark image are saved in the browser's storage, on this device only. "Reset settings" restores the defaults and removes the watermark.
 - Video exports use temporary browser storage where available. “Open another file” deletes the temporary export a few seconds later, once the download has had time to finish. Closing the tab or a crash can leave it behind; clear this site's data to remove it.
 - Hiding faces does not hide everything: clothing, tattoos, banners, gait, and landmarks can still identify people. Your phone may also have uploaded the originals to a cloud backup.
   Read the EFF's [Attending a Protest](https://ssd.eff.org/module/attending-protest) guide, or onestla.tech's [Guide d'autodéfense numérique pour les mouvements sociaux](https://onestla.tech/publications/guide-autodefense-numerique/) in French.

@@ -4,10 +4,6 @@
   import DropZone from "./components/DropZone.svelte";
   import Photo from "./components/Photo.svelte";
   import Video from "./components/Video.svelte";
-  import {
-    defaultMaskOptions,
-    type MaskOptions,
-  } from "./lib/anonymize/render.ts";
   import { Engine } from "./lib/detect/client.ts";
   import { isVideo } from "./lib/media/image.ts";
   import type { Backend } from "./lib/detect/detector.ts";
@@ -62,8 +58,6 @@
 
   let backend = $state<Backend>();
   let error = $state<string>();
-  let options = $state<MaskOptions>({ ...defaultMaskOptions });
-  let threshold = $state(0.2);
   let files = $state.raw<File[]>([]);
   let offline = $state(false);
 
@@ -107,25 +101,11 @@
   {#if files.length}
     {#key files}
       {#if files.length > 1}
-        <Batch {files} {worker} bind:options bind:threshold {onclose} />
+        <Batch {files} {worker} {onclose} />
       {:else if isVideo(files[0])}
-        <Video
-          file={files[0]}
-          {worker}
-          bind:options
-          bind:threshold
-          {onerror}
-          {onclose}
-        />
+        <Video file={files[0]} {worker} {onerror} {onclose} />
       {:else}
-        <Photo
-          file={files[0]}
-          {worker}
-          bind:options
-          bind:threshold
-          {onerror}
-          {onclose}
-        />
+        <Photo file={files[0]} {worker} {onerror} {onclose} />
       {/if}
     {/key}
   {:else}

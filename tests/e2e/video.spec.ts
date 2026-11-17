@@ -191,3 +191,27 @@ test("mask range buttons follow the displayed frame during a pending seek", asyn
   await page.getByRole("button", { name: "Ends here" }).click();
   await expect(page.getByText("Selected mask: frames 0–0")).toBeVisible();
 });
+
+test("undoing a threshold change keeps removed masks removed", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.locator("input[type=file]").setInputFiles(fixture);
+  await expect(page.getByRole("slider", { name: "Frame" })).toBeVisible({
+    timeout: 120_000,
+  });
+  const masks = page.locator("[data-box]");
+  const count = await masks.count();
+  await page.locator("details:not(.credits) > summary").click();
+  await page
+    .getByRole("button", { name: "Remove mask 1", exact: true })
+    .click();
+  await expect(masks).toHaveCount(count - 1);
+
+  const threshold = page.getByLabel("Detection threshold");
+  await threshold.fill("0.05");
+  await expect(masks).not.toHaveCount(count - 1);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(threshold).toHaveValue("0.2");
+  await expect(masks).toHaveCount(count - 1);
+});

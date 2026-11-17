@@ -1,21 +1,55 @@
 <script lang="ts">
-  import { formatNumber, t } from "../lib/i18n.svelte.ts";
-  import type { MaskOptions } from "../lib/anonymize/render.ts";
+  import { formatNumber, formatPercent, t } from "../lib/i18n.svelte.ts";
+  import { EMOJIS } from "../lib/anonymize/emojis.ts";
   import { MIN_THRESHOLD } from "../lib/faces.ts";
+  import {
+    resetSettings,
+    setWatermark,
+    settings,
+    watermark,
+  } from "../lib/settings.svelte.ts";
 
-  let {
-    options = $bindable(),
-    threshold = $bindable(),
-  }: { options: MaskOptions; threshold: number } = $props();
+  /** Called once a setting has changed, rather than for every step of a slider. */
+  let { onchange }: { onchange: () => void } = $props();
 
-  // First, the ones round in Apple and Noto fonts alike: other shapes leave black around them.
-  const EMOJIS = [
-    ..."🙂😷😍😡🌝⚽🙃😉😀😃😄😁😆😊😌😗🥺😐😑😶😏😒🙄🤨😬😮😯😲😳😦😧😨😟😕🙁😖😣😞😩😫😠😵🥴🤢🤤🌚🌕🏀🎱",
-    ..."😎🤓🧐🥸😋😢😭🤬😅🤕😂🤣😇🥰😘😙😚😛😜🤪😝🤑🤗🤭🫢🫣🤫🤔🫡🤐🫥😴😪🤒🤧🥵🥶🤯🤠🥳😤😱😰😥😓🥱😈👿💀👹👺🤡👻👽👾🤖🎃😺😸😹😻😼😽🙀😿😾🙈🙉🙊🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🦄🌞",
-  ];
+  const options = $derived(settings.options);
+  let thumbnail = $state<string>();
+  let watermarkError = $state<string>();
+
+  $effect(() => {
+    if (!watermark.image) return;
+    const url = URL.createObjectURL(watermark.image);
+    thumbnail = url;
+    return () => URL.revokeObjectURL(url);
+  });
+
+  async function pickWatermark(input: HTMLInputElement) {
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+    try {
+      // Without the file name, which may identify its author.
+      await setWatermark(new Blob([file], { type: file.type }));
+      watermarkError = undefined;
+      onchange();
+    } catch {
+      watermarkError = t("cannotOpen", file.name);
+    }
+  }
 </script>
 
-<fieldset>
+{#snippet picker(label: string)}
+  <label class="file">
+    <input
+      type="file"
+      accept="image/*"
+      onchange={(e) => pickWatermark(e.currentTarget)}
+    />
+    {label}
+  </label>
+{/snippet}
+
+<fieldset {onchange}>
   <legend>{t("masking")}</legend>
 
   <label>
@@ -27,23 +61,33 @@
       <option value="blur">{t("blur")}</option>
     </select>
   </label>
-  {#if options.mode === "emoji"}
+  {#if options.mode === "solid"}
+    <label class="inline">
+      <input type="color" bind:value={options.color} />
+      {t("color")}
+    </label>
+  {:else if options.mode === "emoji"}
     <fieldset class="emojis">
       <legend>{t("pickEmoji")}</legend>
       <div>
-        {#each EMOJIS as emoji (emoji)}
+        {#each Object.entries(EMOJIS) as [emoji, color] (emoji)}
           <label>
             <input
               type="radio"
               name="emoji"
               value={emoji}
               bind:group={options.emoji}
+              onchange={() => (options.emojiColor = color)}
             />
             <span>{emoji}</span>
           </label>
         {/each}
       </div>
     </fieldset>
+    <label class="inline">
+      <input type="color" bind:value={options.emojiColor} />
+      {t("emojiColor")}
+    </label>
   {/if}
   {#if options.mode === "mosaic" || options.mode === "blur"}
     <p class="warning" role="note">{t("weakWarning")}</p>
@@ -56,10 +100,10 @@
       min={MIN_THRESHOLD}
       max="0.9"
       step="0.05"
-      bind:value={threshold}
+      bind:value={settings.threshold}
       aria-describedby="threshold-help"
     />
-    <output>{formatNumber(threshold, 2)}</output>
+    <output>{formatNumber(settings.threshold, 2)}</output>
   </label>
   <p id="threshold-help" class="help">{t("thresholdHelp")}</p>
 
@@ -80,6 +124,60 @@
     {t("oval")}
   </label>
 </fieldset>
+
+<fieldset {onchange}>
+  <legend>{t("watermark")}</legend>
+  {#if watermark.bitmap}
+    <img src={thumbnail} alt={t("watermarkImage")} />
+    <label>
+      {t("watermarkSize")}
+      <input
+        type="range"
+        min="0.05"
+        max="0.5"
+        step="0.01"
+        bind:value={settings.watermark.size}
+      />
+      <output>{formatPercent(settings.watermark.size)}</output>
+    </label>
+    <label>
+      {t("opacity")}
+      <input
+        type="range"
+        min="0.1"
+        max="1"
+        step="0.05"
+        bind:value={settings.watermark.opacity}
+      />
+      <output>{formatPercent(settings.watermark.opacity)}</output>
+    </label>
+    <p class="help">{t("watermarkHint")}</p>
+    <div class="row">
+      {@render picker(t("changeWatermark"))}
+      <button
+        type="button"
+        onclick={() => {
+          setWatermark(undefined);
+          onchange();
+        }}>{t("removeWatermark")}</button
+      >
+    </div>
+  {:else}
+    {@render picker(t("addWatermark"))}
+  {/if}
+  {#if watermarkError}
+    <p class="error" role="alert">{watermarkError}</p>
+  {/if}
+</fieldset>
+
+<button
+  type="button"
+  onclick={() => {
+    resetSettings();
+    onchange();
+  }}>{t("resetSettings")}</button
+>
+<p class="help">{t("settingsSaved")}</p>
 
 <style>
   fieldset {
@@ -116,6 +214,12 @@
 
   label.inline {
     display: flex;
+  }
+
+  input[type="color"] {
+    width: 3rem;
+    height: 1.75rem;
+    padding: 0;
   }
 
   .emojis {
@@ -174,5 +278,48 @@
     margin: 0;
     font-size: 0.875rem;
     color: var(--muted);
+  }
+
+  .error {
+    margin: 0;
+    color: var(--danger);
+  }
+
+  img {
+    max-width: 100%;
+    max-height: 6rem;
+    margin: 0 auto;
+    object-fit: contain;
+    /* Shows transparent watermarks on both themes. */
+    background: repeating-conic-gradient(#ccc 0 25%, #fff 0 50%) 0 0 / 1rem 1rem;
+  }
+
+  .row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .row > * {
+    flex: 1;
+  }
+
+  /* A button that opens the file picker. */
+  label.file {
+    display: block;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--fg);
+    text-align: center;
+    cursor: pointer;
+  }
+
+  label.file:focus-within {
+    outline: 2px solid var(--accent);
+  }
+
+  label.file input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
   }
 </style>

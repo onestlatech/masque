@@ -18,6 +18,8 @@ const en = {
   solid: "Solid (safest)",
   emoji: "Emoji",
   pickEmoji: "Emoji to use",
+  color: "Color",
+  emojiColor: "Background color",
   mosaic: "Mosaic",
   blur: "Blur",
   weakWarning:
@@ -27,6 +29,19 @@ const en = {
     "Lower values catch more faces, along with more false positives.",
   maskSize: "Mask size",
   oval: "Oval masks",
+  resetSettings: "Reset settings",
+  history: "History",
+  undo: "Undo",
+  redo: "Redo",
+  settingsSaved: "Settings and watermark are saved on this device only.",
+  watermark: "Watermark",
+  watermarkImage: "Watermark image",
+  addWatermark: "Add an image…",
+  changeWatermark: "Change",
+  removeWatermark: "Remove",
+  watermarkSize: "Size",
+  opacity: "Opacity",
+  watermarkHint: "Drag the watermark on the image to move it.",
   editorLabel:
     "Image with hidden faces. Drag to add a mask; select a mask to move it, resize it from its corner, or delete it.",
   masks: (n: number) => `${n} ${n === 1 ? "mask" : "masks"}`,
@@ -115,6 +130,8 @@ const fr: typeof en = {
   solid: "Plein (le plus sûr)",
   emoji: "Émoji",
   pickEmoji: "Émoji à utiliser",
+  color: "Couleur",
+  emojiColor: "Couleur de fond",
   mosaic: "Mosaïque",
   blur: "Flou",
   weakWarning:
@@ -124,6 +141,20 @@ const fr: typeof en = {
     "Une valeur basse détecte plus de visages, mais aussi plus de faux positifs.",
   maskSize: "Taille des masques",
   oval: "Masques ovales",
+  resetSettings: "Réinitialiser les réglages",
+  history: "Historique",
+  undo: "Défaire",
+  redo: "Refaire",
+  settingsSaved:
+    "Les réglages et le filigrane sont enregistrés sur cet appareil uniquement.",
+  watermark: "Filigrane",
+  watermarkImage: "Image du filigrane",
+  addWatermark: "Ajouter une image…",
+  changeWatermark: "Changer",
+  removeWatermark: "Retirer",
+  watermarkSize: "Taille",
+  opacity: "Opacité",
+  watermarkHint: "Faites glisser le filigrane sur l’image pour le déplacer.",
   editorLabel:
     "Image aux visages masqués. Faites glisser pour ajouter un masque ; sélectionnez un masque pour le déplacer, le redimensionner par son coin ou le supprimer.",
   masks: (n) => `${n} ${n > 1 ? "masques" : "masque"}`,
@@ -247,8 +278,9 @@ export const formatNumber = (n: number, digits: number) =>
     maximumFractionDigits: digits,
   });
 
+// The epsilon absorbs floating-point error: 0.29 * 100 is 28.999…
 export const formatPercent = (fraction: number) =>
-  Math.floor(fraction * 100).toLocaleString(i18n.locale, {
+  Math.floor(fraction * 100 + 1e-9).toLocaleString(i18n.locale, {
     style: "unit",
     unit: "percent",
   });
