@@ -29,3 +29,16 @@ test("works offline once loaded", async ({ page, context, browserName }) => {
     },
   );
 });
+
+test("detects faces after a reload during precaching", async ({ page }) => {
+  await page.goto("/");
+  for (const reload of [false, true]) {
+    if (reload) await page.reload();
+    await page
+      .locator("input[type=file]")
+      .setInputFiles(new URL("../fixtures/city.jpg", import.meta.url).pathname);
+    await expect(page.getByRole("button", { name: "Download" })).toBeEnabled({
+      timeout: 60_000,
+    });
+  }
+});

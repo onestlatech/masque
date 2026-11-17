@@ -1,5 +1,11 @@
 <script lang="ts">
-  import { i18n, setLocale, t, type Locale } from "./lib/i18n.svelte.ts";
+  import {
+    errorMessage,
+    i18n,
+    setLocale,
+    t,
+    type Locale,
+  } from "./lib/i18n.svelte.ts";
   import Batch from "./components/Batch.svelte";
   import DropZone from "./components/DropZone.svelte";
   import Photo from "./components/Photo.svelte";
@@ -65,19 +71,36 @@
 
   navigator.serviceWorker?.ready.then(() => (offline = true));
 
-  worker
-    .call("init", {})
-    .then(
-      (b) => (backend = b),
-      (e: Error) => (error = t("detectorFailed", e.message)),
-    )
-    // Precaching the model while the detector downloads it makes Chromium's HTTP cache fail one of the two.
-    .finally(() => {
-      if (import.meta.env.PROD && "serviceWorker" in navigator)
-        navigator.serviceWorker
-          .register(`${import.meta.env.BASE_URL}sw.js`)
-          .then((r) => (updater = new Updater(navigator.serviceWorker, r)));
-    });
+  // Chromium's HTTP cache fails one of two concurrent downloads of a file, so the detector and the precache take turns.
+  async function precached() {
+    const sw = navigator.serviceWorker;
+    if (!sw || sw.controller) return;
+    try {
+      const installing = (await sw.getRegistration())?.installing;
+      if (installing?.state === "installing")
+        await new Promise((resolve) =>
+          installing.addEventListener("statechange", resolve, { once: true }),
+        );
+    } catch {
+      // Detection must start anyway: the race only costs a reload.
+    }
+  }
+
+  (async () => {
+    await precached();
+    try {
+      backend = await worker.call("init", {});
+    } catch (e) {
+      error = t("detectorFailed", errorMessage(e));
+    }
+    if (import.meta.env.PROD && "serviceWorker" in navigator)
+      updater = new Updater(
+        navigator.serviceWorker,
+        await navigator.serviceWorker.register(
+          `${import.meta.env.BASE_URL}sw.js`,
+        ),
+      );
+  })();
 
   function open(selected: File[]) {
     error = undefined;

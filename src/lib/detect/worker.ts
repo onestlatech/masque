@@ -49,7 +49,10 @@ const running = new Map<number, AbortController>();
 let nextVideo = 0;
 let queue = Promise.resolve();
 
-const getDetector = () => (detector ??= Detector.create());
+// Downloads wait for init: the page holds it while a service worker precaches the same files.
+let start!: () => void;
+const started = new Promise<void>((resolve) => (start = resolve));
+const getDetector = () => (detector ??= started.then(() => Detector.create()));
 
 function video(id: number): Video {
   const v = videos.get(id);
@@ -123,6 +126,8 @@ addEventListener("message", ({ data }: MessageEvent<Request>) => {
     postMessage({ id: data.id, result: undefined } satisfies Response);
     return;
   }
+  // Outside the queue, which earlier requests may block waiting for the detector.
+  if (data.type === "init") start();
   const controller = new AbortController();
   running.set(data.id, controller);
   // The detector session and video canvases must not be used by overlapping requests.

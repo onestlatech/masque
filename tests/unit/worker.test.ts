@@ -32,6 +32,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 const image = () =>
   ({ width: 32, height: 32, close: vi.fn() }) as unknown as ImageBitmap;
+const init = () => send({ data: { id: 99, type: "init" } });
 
 test("uncaught worker errors reach the client failure handler", () => {
   expect(events.dispatchEvent(new Event("error", { cancelable: true }))).toBe(
@@ -47,6 +48,7 @@ test("requests run serially while cancellation bypasses the queue", async () => 
         finish = resolve;
       }),
   );
+  init();
   const images = [image(), image(), image()];
   for (const [id, image] of images.entries())
     send({ data: { id, type: "detect", image, threshold: 0.2 } });
@@ -62,10 +64,21 @@ test("requests run serially while cancellation bypasses the queue", async () => 
 
 test("detector initialization failure still closes transferred images", async () => {
   create.mockRejectedValueOnce(new Error("Model unavailable"));
+  init();
   const bitmap = image();
   send({ data: { id: 0, type: "detect", image: bitmap, threshold: 0.2 } });
   await vi.waitFor(() =>
     expect(post).toHaveBeenCalledWith({ id: 0, error: "Model unavailable" }),
   );
   expect(bitmap.close).toHaveBeenCalledOnce();
+});
+
+test("detection waits for init to download the model", async () => {
+  send({ data: { id: 0, type: "detect", image: image(), threshold: 0.2 } });
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  expect(create).not.toHaveBeenCalled();
+  init();
+  await vi.waitFor(() =>
+    expect(post).toHaveBeenCalledWith({ id: 0, result: [] }, { transfer: [] }),
+  );
 });
