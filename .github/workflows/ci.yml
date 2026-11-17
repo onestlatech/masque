@@ -112,3 +112,11 @@ jobs:
             open --env-password -u \"$FTP_USER\" \"$FTP_HOST\"
             mirror --reverse --delete --no-perms --parallel=4 --exclude-glob .infomaniak-maintenance.html --exclude-glob .user.ini dist/ ./
           "
+
+  monitor:
+    needs: deploy
+    permissions:
+      contents: read
+      attestations: read
+    # actionlint 1.7.12 rejects the $/ self-repository syntax
+    uses: ./.github/workflows/monitor.yml # zizmor: ignore[self-repository]
