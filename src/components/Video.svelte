@@ -53,7 +53,7 @@
   // Masks follow the frame on screen, which lags behind the slider while the next frame decodes.
   const shownFrame = $derived(bitmapFrame ?? frame);
 
-  function run<T>(
+  async function run<T>(
     label: string,
     work: (o: {
       signal: AbortSignal;
@@ -62,10 +62,14 @@
   ) {
     const controller = new AbortController();
     task = { label, fraction: 0, controller };
-    return work({
-      signal: controller.signal,
-      onProgress: (f) => task && (task.fraction = f),
-    }).finally(() => (task = undefined));
+    try {
+      return await work({
+        signal: controller.signal,
+        onProgress: (f) => task && (task.fraction = f),
+      });
+    } finally {
+      task = undefined;
+    }
   }
 
   $effect(() => {
@@ -117,21 +121,22 @@
     let stale = false;
     const controller = new AbortController();
     const requestedFrame = frame;
-    worker
-      .call(
-        "frame",
-        { video, timestamp: analysis.timestamps[requestedFrame] },
-        { signal: controller.signal },
-      )
-      .then((b) => {
+    const timestamp = analysis.timestamps[requestedFrame];
+    (async () => {
+      try {
+        const b = await worker.call(
+          "frame",
+          { video, timestamp },
+          { signal: controller.signal },
+        );
         if (stale) return b.close();
         bitmap?.close();
         bitmap = b;
         bitmapFrame = requestedFrame;
-      })
-      .catch((e) => {
+      } catch (e) {
         if (!stale) onerror(t("cannotProcess", file.name, errorMessage(e)));
-      });
+      }
+    })();
     return () => {
       stale = true;
       controller.abort();
