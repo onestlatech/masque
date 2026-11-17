@@ -1,0 +1,7 @@
+{
+  "app": "https://github.com/onestlatech/masque",
+  "version": "0.0.0",
+  "default_csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; img-src 'self' blob: data:; media-src 'self' blob:; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types svelte-trusted-html default",
+  "wasm": [],
+  "extra_csp": {}
+}

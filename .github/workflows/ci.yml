@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Re-signs the WEBCAT manifest well before its max_age runs out.
+  schedule:
+    - cron: "41 3 * * 1"
 
 permissions:
   contents: read
@@ -54,7 +57,7 @@ jobs:
       - run: npm test
       - run: npx playwright install --with-deps
       - run: npm run e2e
-      - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dist
@@ -64,10 +67,38 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  # Lets anyone check that served files come from this build; signing stays out of the job holding the deploy key.
+  attest:
+    needs: [lint, test]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: dist
+          path: dist
+      # Subjects named by path, not basename, so a file served under another path fails verification.
+      - run: cd dist && find . -type f -printf '%P\n' | sort | xargs sha256sum > ../SHA256SUMS
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: SHA256SUMS
+
+  webcat:
+    needs: [lint, test]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      id-token: write
+    # actionlint 1.7.12 rejects the $/ self-repository syntax
+    uses: ./.github/workflows/webcat.yml # zizmor: ignore[self-repository]
+
   # Builds run in the test job: npm install scripts never see the deploy key.
   deploy:
-    needs: [lint, test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [attest, webcat]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: production
@@ -80,16 +111,30 @@ jobs:
         with:
           name: dist
           path: dist
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: webcat
+          path: dist/.well-known/webcat
       - env:
           FTP_HOST: ${{ secrets.FTP_HOST }}
           FTP_USER: ${{ secrets.FTP_USER }}
           LFTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         # The FTP account is confined to the site folder; .infomaniak-maintenance.html and .user.ini belong to the host.
+        # WEBCAT history files must stay published for auditors, so that folder is never pruned.
         run: |
           sudo apt-get update -q && sudo apt-get install -y -q --no-install-recommends lftp
           lftp -c "
             set ftp:ssl-force true; set ftp:ssl-protect-data true; set ssl:verify-certificate true
-            set xfer:use-temp-file true
+            set xfer:use-temp-file true; set cmd:fail-exit true
             open --env-password -u \"$FTP_USER\" \"$FTP_HOST\"
-            mirror --reverse --delete --no-perms --parallel=4 --exclude-glob .infomaniak-maintenance.html --exclude-glob .user.ini dist/ ./
+            mirror --reverse --delete --no-perms --parallel=4 --exclude-glob .infomaniak-maintenance.html --exclude-glob .user.ini --exclude ^\.well-known/webcat/ dist/ ./
+            mirror --reverse --no-perms dist/.well-known/webcat/ .well-known/webcat/
           "
+
+  monitor:
+    needs: deploy
+    permissions:
+      contents: read
+      attestations: read
+    # actionlint 1.7.12 rejects the $/ self-repository syntax
+    uses: ./.github/workflows/monitor.yml # zizmor: ignore[self-repository]

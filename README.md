@@ -47,6 +47,19 @@ npm run e2e
 
 GitHub Pages cannot set these headers and is not supported. Cloudflare Pages rejects files over 25 MiB, and the ONNX Runtime WebAssembly file is larger, so it is not supported either.
 
+## Verifying the deployment
+
+CI signs every built file it deploys with a [GitHub artifact attestation](https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations) that records its source commit. Checking a file served by <https://masque.onestla.tech> only needs the [GitHub CLI](https://cli.github.com). Browsers that accept brotli get a precompressed variant of large files, so check both:
+
+```console
+curl -so centerface.onnx https://masque.onestla.tech/models/centerface.onnx
+curl -so centerface.onnx.br -H 'Accept-Encoding: br' https://masque.onestla.tech/models/centerface.onnx
+gh attestation verify centerface.onnx --repo onestlatech/masque
+gh attestation verify centerface.onnx.br --repo onestlatech/masque
+```
+
+`scripts/verify-deployment.sh` checks every file listed in `sw.js` this way, and the Monitor workflow runs it every hour and after each deployment. The build is reproducible: `npm run build` at the attested commit produces the same files.
+
 ## License
 
 [AGPL-3.0-or-later](LICENSE).
