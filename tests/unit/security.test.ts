@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
-import { securityHeaders } from "../../security.ts";
+import { csp, securityHeaders } from "../../security.ts";
 
 test("Caddyfile sends the same security headers as security.ts", () => {
   const caddyfile = readFileSync(
@@ -10,4 +10,12 @@ test("Caddyfile sends the same security headers as security.ts", () => {
   for (const [name, value] of Object.entries(securityHeaders)) {
     expect(caddyfile).toContain(`${name} "${value}"`);
   }
+});
+
+// WEBCAT blocks responses whose header differs from the signed policy by a single byte.
+test("WEBCAT manifest signs the CSP that security.ts sends", () => {
+  const config = JSON.parse(
+    readFileSync(new URL("../../webcat.config.json", import.meta.url), "utf8"),
+  );
+  expect(config.default_csp).toBe(csp);
 });
