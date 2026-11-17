@@ -14,6 +14,15 @@ export type Backend = "webgpu" | "wasm";
 
 const MODEL_URL = `${import.meta.env.BASE_URL}models/centerface.onnx`;
 
+// Firefox collects workers nothing references, dropping their messages, and ONNX Runtime only references its threads from pending promises until they start.
+const threads: Worker[] = [];
+self.Worker = class extends Worker {
+  constructor(...args: ConstructorParameters<typeof Worker>) {
+    super(...args);
+    threads.push(this);
+  }
+};
+
 const createSession = (model: Uint8Array, backend: Backend) =>
   ort.InferenceSession.create(model, {
     executionProviders: [backend],
