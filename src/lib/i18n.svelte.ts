@@ -8,6 +8,8 @@ const en = {
   warning:
     "Check everything before sharing: automatic detection can miss faces. Clothing, tattoos, banners, and places can still identify people, and your phone may have backed up the original to the cloud.",
   offline: "Saved on this device: Masque works without an internet connection.",
+  updateAvailable: "A new version of Masque is available.",
+  update: "Update",
   backendGpu: "Detection runs on your GPU (WebGPU).",
   backendCpu: "Detection runs on your CPU (WebAssembly).",
   detectorFailed: (m: string) => `The face detector could not start: ${m}`,
@@ -120,6 +122,8 @@ const fr: typeof en = {
     "Vérifiez tout avant de partager : la détection automatique peut manquer des visages. Vêtements, tatouages, banderoles et lieux peuvent encore permettre d’identifier des personnes, et votre téléphone a peut-être déjà sauvegardé l’original dans le cloud.",
   offline:
     "Enregistré sur cet appareil : Masque fonctionne sans connexion internet.",
+  updateAvailable: "Une nouvelle version de Masque est disponible.",
+  update: "Mettre à jour",
   backendGpu: "La détection s’exécute sur votre processeur graphique (WebGPU).",
   backendCpu: "La détection s’exécute sur votre processeur (WebAssembly).",
   detectorFailed: (m) => `Le détecteur de visages n’a pas pu démarrer : ${m}`,
